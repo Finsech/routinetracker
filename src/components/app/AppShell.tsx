@@ -1,12 +1,14 @@
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import {
+  AppWindow,
   Brain,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
   History,
   Monitor,
+  MousePointer2,
   Play,
   Settings,
   ShieldCheck,
@@ -16,8 +18,20 @@ import {
 
 import { StatusLine } from "@/components/app/StatusLine"
 import { Button } from "@/components/ui/button"
-import { getTrackingStatus, startTracking, stopTracking } from "@/lib/focusflow-api"
+import {
+  getTrackingStatus,
+  startTracking,
+  stopTracking,
+  type TrackerStatusRecord,
+} from "@/lib/focusflow-api"
 import type { NavItem, View } from "@/types"
+
+const initialTrackerStatus: TrackerStatusRecord = {
+  running: false,
+  current_app: null,
+  current_window_title: null,
+  idle_seconds: 0,
+}
 
 const navItems: NavItem[] = [
   { id: "today", label: "Сегодня", icon: CalendarDays },
@@ -38,13 +52,34 @@ type AppShellProps = {
 }
 
 export function AppShell({ activeView, children, onViewChange }: AppShellProps) {
-  const [trackerRunning, setTrackerRunning] = useState(false)
+  const [trackerStatus, setTrackerStatus] = useState<TrackerStatusRecord>(initialTrackerStatus)
   const [trackerBusy, setTrackerBusy] = useState(false)
+  const trackerRunning = trackerStatus.running
 
   useEffect(() => {
-    getTrackingStatus()
-      .then((status) => setTrackerRunning(status.running))
-      .catch(() => setTrackerRunning(false))
+    let active = true
+
+    async function refreshStatus() {
+      try {
+        const status = await getTrackingStatus()
+
+        if (active) {
+          setTrackerStatus(status)
+        }
+      } catch {
+        if (active) {
+          setTrackerStatus(initialTrackerStatus)
+        }
+      }
+    }
+
+    void refreshStatus()
+    const interval = window.setInterval(refreshStatus, 2000)
+
+    return () => {
+      active = false
+      window.clearInterval(interval)
+    }
   }, [])
 
   async function toggleTracking() {
@@ -53,15 +88,18 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
     try {
       if (trackerRunning) {
         await stopTracking()
-        setTrackerRunning(false)
       } else {
         await startTracking()
-        setTrackerRunning(true)
       }
+
+      setTrackerStatus(await getTrackingStatus())
     } finally {
       setTrackerBusy(false)
     }
   }
+
+  const currentActivity = formatCurrentActivity(trackerStatus)
+  const idleTime = formatIdleTime(trackerStatus.idle_seconds)
 
   return (
     <main className="min-h-screen bg-[#F7F8F5] text-zinc-950">
@@ -108,6 +146,8 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
                 label="Трекинг"
                 value={trackerRunning ? "включен" : "выключен"}
               />
+              <StatusLine icon={AppWindow} label="Сейчас" value={currentActivity} />
+              <StatusLine icon={MousePointer2} label="Idle" value={idleTime} />
               <StatusLine icon={Brain} label="LLM" value="мок-данные" />
               <StatusLine icon={ShieldCheck} label="Приватность" value="локально" />
             </div>
@@ -168,4 +208,32 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
       </div>
     </main>
   )
+}
+
+function formatCurrentActivity(status: TrackerStatusRecord) {
+  if (!status.current_app) {
+    return "нет сессии"
+  }
+
+  if (!status.current_window_title) {
+    return status.current_app
+  }
+
+  const title =
+    status.current_window_title.length > 32
+      ? `${status.current_window_title.slice(0, 32)}...`
+      : status.current_window_title
+
+  return `${status.current_app}: ${title}`
+}
+
+function formatIdleTime(seconds: number) {
+  if (seconds < 60) {
+    return `${seconds} с`
+  }
+
+  const minutes = Math.floor(seconds / 60)
+  const restSeconds = seconds % 60
+
+  return `${minutes} мин ${restSeconds} с`
 }

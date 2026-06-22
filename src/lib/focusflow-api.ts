@@ -28,6 +28,9 @@ export type NewStoplistItemRecord = Omit<StoplistItemRecord, "id">
 
 export type TrackerStatusRecord = {
   running: boolean
+  current_app: string | null
+  current_window_title: string | null
+  idle_seconds: number
 }
 
 let browserTrackerRunning = false
@@ -110,7 +113,12 @@ export async function stopTracking() {
 
 export async function getTrackingStatus() {
   if (!isTauriRuntime()) {
-    return { running: browserTrackerRunning }
+    return {
+      running: browserTrackerRunning,
+      current_app: browserTrackerRunning ? "browser-preview" : null,
+      current_window_title: browserTrackerRunning ? "Мок-режим трекинга" : null,
+      idle_seconds: 0,
+    }
   }
 
   return invoke<TrackerStatusRecord>("get_tracking_status")

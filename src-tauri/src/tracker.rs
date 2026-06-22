@@ -1,7 +1,7 @@
 use crate::database::{Database, NewActivityLog};
 use chrono::Utc;
 use serde::Serialize;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -13,6 +13,8 @@ const IDLE_THRESHOLD: Duration = Duration::from_secs(10 * 60);
 #[derive(Default)]
 pub struct Tracker {
     running: Arc<AtomicBool>,
+    current_snapshot: Arc<Mutex<Option<WindowSnapshot>>>,
+    idle_seconds: Arc<AtomicU64>,
     handle: Mutex<Option<JoinHandle<()>>>,
 }
 
@@ -32,6 +34,9 @@ struct ActiveSession {
 #[derive(Debug, Serialize)]
 pub struct TrackerStatus {
     pub running: bool,
+    pub current_app: Option<String>,
+    pub current_window_title: Option<String>,
+    pub idle_seconds: u64,
 }
 
 impl Tracker {
@@ -47,9 +52,11 @@ impl Tracker {
 
         self.running.store(true, Ordering::SeqCst);
         let running = Arc::clone(&self.running);
+        let current_snapshot = Arc::clone(&self.current_snapshot);
+        let idle_seconds = Arc::clone(&self.idle_seconds);
 
         *handle = Some(thread::spawn(move || {
-            tracking_loop(app, running);
+            tracking_loop(app, running, current_snapshot, idle_seconds);
         }));
 
         Ok(())
@@ -69,12 +76,25 @@ impl Tracker {
                 .map_err(|_| "Фоновый tracker завершился с ошибкой".to_string())?;
         }
 
+        if let Ok(mut snapshot) = self.current_snapshot.lock() {
+            *snapshot = None;
+        }
+
         Ok(())
     }
 
     pub fn status(&self) -> TrackerStatus {
+        let snapshot = self
+            .current_snapshot
+            .lock()
+            .ok()
+            .and_then(|snapshot| snapshot.clone());
+
         TrackerStatus {
             running: self.running.load(Ordering::SeqCst),
+            current_app: snapshot.as_ref().map(|snapshot| snapshot.app_name.clone()),
+            current_window_title: snapshot.and_then(|snapshot| snapshot.window_title),
+            idle_seconds: self.idle_seconds.load(Ordering::SeqCst),
         }
     }
 }
@@ -94,17 +114,28 @@ pub fn get_tracking_status(tracker: tauri::State<Tracker>) -> TrackerStatus {
     tracker.status()
 }
 
-fn tracking_loop(app: AppHandle, running: Arc<AtomicBool>) {
+fn tracking_loop(
+    app: AppHandle,
+    running: Arc<AtomicBool>,
+    current_snapshot: Arc<Mutex<Option<WindowSnapshot>>>,
+    idle_seconds: Arc<AtomicU64>,
+) {
     let mut current: Option<ActiveSession> = None;
 
     while running.load(Ordering::SeqCst) {
-        if read_idle_duration() >= IDLE_THRESHOLD {
+        let idle_duration = read_idle_duration();
+        idle_seconds.store(idle_duration.as_secs(), Ordering::SeqCst);
+
+        if idle_duration >= IDLE_THRESHOLD {
             close_session(&app, current.take());
+            set_current_snapshot(&current_snapshot, None);
             thread::sleep(POLL_INTERVAL);
             continue;
         }
 
         if let Some(snapshot) = read_active_window() {
+            set_current_snapshot(&current_snapshot, Some(snapshot.clone()));
+
             if current
                 .as_ref()
                 .map(|session| session.snapshot != snapshot)
@@ -122,6 +153,8 @@ fn tracking_loop(app: AppHandle, running: Arc<AtomicBool>) {
     }
 
     close_session(&app, current);
+    set_current_snapshot(&current_snapshot, None);
+    idle_seconds.store(0, Ordering::SeqCst);
 }
 
 fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
@@ -145,6 +178,15 @@ fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
 
 fn now() -> String {
     Utc::now().to_rfc3339()
+}
+
+fn set_current_snapshot(
+    current_snapshot: &Arc<Mutex<Option<WindowSnapshot>>>,
+    next_snapshot: Option<WindowSnapshot>,
+) {
+    if let Ok(mut snapshot) = current_snapshot.lock() {
+        *snapshot = next_snapshot;
+    }
 }
 
 #[cfg(target_os = "windows")]

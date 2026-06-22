@@ -13,8 +13,9 @@ export function StatusLine({ icon: Icon, label, value }: StatusLineProps) {
         <Icon className="size-4" />
         {label}
       </span>
-      <span className="text-xs text-zinc-500">{value}</span>
+      <span className="min-w-0 truncate text-right text-xs text-zinc-500" title={value}>
+        {value}
+      </span>
     </div>
   )
 }
-
