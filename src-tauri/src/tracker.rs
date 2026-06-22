@@ -7,6 +7,9 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
+const POLL_INTERVAL: Duration = Duration::from_secs(2);
+const IDLE_THRESHOLD: Duration = Duration::from_secs(10 * 60);
+
 #[derive(Default)]
 pub struct Tracker {
     running: Arc<AtomicBool>,
@@ -95,6 +98,12 @@ fn tracking_loop(app: AppHandle, running: Arc<AtomicBool>) {
     let mut current: Option<ActiveSession> = None;
 
     while running.load(Ordering::SeqCst) {
+        if read_idle_duration() >= IDLE_THRESHOLD {
+            close_session(&app, current.take());
+            thread::sleep(POLL_INTERVAL);
+            continue;
+        }
+
         if let Some(snapshot) = read_active_window() {
             if current
                 .as_ref()
@@ -109,7 +118,7 @@ fn tracking_loop(app: AppHandle, running: Arc<AtomicBool>) {
             }
         }
 
-        thread::sleep(Duration::from_secs(2));
+        thread::sleep(POLL_INTERVAL);
     }
 
     close_session(&app, current);
@@ -136,6 +145,30 @@ fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
 
 fn now() -> String {
     Utc::now().to_rfc3339()
+}
+
+#[cfg(target_os = "windows")]
+fn read_idle_duration() -> Duration {
+    use windows::Win32::System::SystemInformation::GetTickCount;
+    use windows::Win32::UI::Input::KeyboardAndMouse::{GetLastInputInfo, LASTINPUTINFO};
+
+    let mut info = LASTINPUTINFO {
+        cbSize: std::mem::size_of::<LASTINPUTINFO>() as u32,
+        dwTime: 0,
+    };
+
+    let success = unsafe { GetLastInputInfo(&mut info).as_bool() };
+    if !success {
+        return Duration::ZERO;
+    }
+
+    let tick_count = unsafe { GetTickCount() };
+    Duration::from_millis(tick_count.wrapping_sub(info.dwTime) as u64)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn read_idle_duration() -> Duration {
+    Duration::ZERO
 }
 
 #[cfg(target_os = "windows")]
