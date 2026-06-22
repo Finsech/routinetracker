@@ -48,7 +48,7 @@ npm run tauri dev
 
 Готов официальный scaffold Tauri + React, подключены Tailwind CSS и shadcn/ui. Первый UI-прототип на мок-данных разложен на страницы, app-shell и dashboard-компоненты.
 
-На Rust-стороне добавлен SQLite-слой с миграциями и Tauri-командами для activity log, settings и stoplist. На frontend-стороне есть API-клиент с fallback на мок-данные для браузерного preview.
+На Rust-стороне добавлен SQLite-слой с миграциями и Tauri-командами для activity log, settings и stoplist. Экран настроек читает данные через frontend API-клиент: в Tauri runtime из SQLite, в браузере через fallback на мок-данные.
 
 Основная frontend-структура:
 

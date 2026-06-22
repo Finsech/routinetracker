@@ -246,6 +246,14 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 type TEXT NOT NULL,
                 value TEXT NOT NULL UNIQUE
             );
+
+            INSERT OR IGNORE INTO settings (key, value) VALUES
+                ('language', 'Русский'),
+                ('theme', 'Системная'),
+                ('autostart', 'Выключен'),
+                ('llm_provider', 'Не настроен'),
+                ('ollama_url', 'localhost:11434'),
+                ('export_format', 'JSON');
             ",
         )
         .map_err(|error| format!("Не удалось применить миграции SQLite: {error}"))
@@ -287,4 +295,3 @@ fn get_stoplist_item_by_id(connection: &Connection, id: i64) -> Result<StoplistI
         )
         .map_err(|error| error.to_string())
 }
-
