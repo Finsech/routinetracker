@@ -52,11 +52,14 @@ npm run tauri dev
 
 Добавлен первый слой нативного трекинга: Tauri-команды запуска, остановки и статуса, polling активного окна Windows, определение имени процесса и заголовка окна, запись завершенных интервалов в SQLite. В боковой панели есть кнопка запуска и остановки трекинга; в browser preview она работает как мок-переключатель.
 
+Главный экран и история читают `activity_log` через frontend API: дневной таймлайн, активное время, недельная история и heatmap строятся из реальных записей SQLite. До подключения LLM активности временно группируются по приложениям как `Сырые активности`.
+
 Основная frontend-структура:
 
 - `src/pages/` - экраны приложения.
 - `src/components/app/` - каркас приложения и навигация.
 - `src/components/dashboard/` - виджеты метрик, таймлайнов, потоков и heatmap.
-- `src/data/mock.ts` - мок-данные до подключения SQLite и трекинга.
+- `src/data/mock.ts` - мок-данные для browser preview и будущих UI-сценариев.
+- `src/lib/activity-analytics.ts` - frontend-агрегация activity log для экранов сегодня и истории.
 - `src/lib/focusflow-api.ts` - frontend API-клиент для Tauri-команд и browser fallback.
 - `src/types.ts` - общие frontend-типы.

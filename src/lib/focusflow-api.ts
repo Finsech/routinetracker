@@ -34,10 +34,12 @@ let browserTrackerRunning = false
 
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
+    const dateKey = mockDateKey()
+
     return timeline.map<ActivityLogRecord>((item, index) => ({
       id: index + 1,
-      start_time: `2026-06-23T${item.start}:00`,
-      end_time: `2026-06-23T${item.start}:00`,
+      start_time: `${dateKey}T${item.start}:00`,
+      end_time: mockEndTime(dateKey, item.start, index),
       app_name: item.app,
       window_title: item.label,
       url: null,
@@ -116,4 +118,19 @@ export async function getTrackingStatus() {
 
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window
+}
+
+function mockDateKey() {
+  const today = new Date()
+  const year = today.getFullYear()
+  const month = String(today.getMonth() + 1).padStart(2, "0")
+  const day = String(today.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function mockEndTime(dateKey: string, start: string, index: number) {
+  const durationMinutes = [45, 90, 30, 50, 70, 35][index] ?? 30
+  const date = new Date(`${dateKey}T${start}:00`)
+  date.setMinutes(date.getMinutes() + durationMinutes)
+  return date.toISOString()
 }

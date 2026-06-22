@@ -13,7 +13,9 @@ export function WeekTimeline({ items }: WeekTimelineProps) {
           <div className="flex h-full flex-col justify-end gap-2" key={item.day}>
             <div
               className="rounded-t-md bg-[#22C55E]"
-              style={{ height: `${Math.max(item.hours * 18, 10)}px` }}
+              style={{
+                height: item.hours > 0 ? `${Math.max(item.hours * 18, 10)}px` : "2px",
+              }}
             />
             <div className="text-center text-xs text-zinc-500">{item.day}</div>
           </div>
@@ -22,4 +24,3 @@ export function WeekTimeline({ items }: WeekTimelineProps) {
     </section>
   )
 }
-
