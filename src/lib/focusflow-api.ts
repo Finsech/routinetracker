@@ -1,0 +1,88 @@
+import { invoke } from "@tauri-apps/api/core"
+
+import { flows, settingsRows, timeline } from "@/data/mock"
+
+export type ActivityLogRecord = {
+  id: number
+  start_time: string
+  end_time: string
+  app_name: string
+  window_title: string | null
+  url: string | null
+}
+
+export type NewActivityLogRecord = Omit<ActivityLogRecord, "id">
+
+export type SettingEntryRecord = {
+  key: string
+  value: string
+}
+
+export type StoplistItemRecord = {
+  id: number
+  item_type: string
+  value: string
+}
+
+export type NewStoplistItemRecord = Omit<StoplistItemRecord, "id">
+
+export async function getActivityLogs() {
+  if (!isTauriRuntime()) {
+    return timeline.map<ActivityLogRecord>((item, index) => ({
+      id: index + 1,
+      start_time: `2026-06-23T${item.start}:00`,
+      end_time: `2026-06-23T${item.start}:00`,
+      app_name: item.app,
+      window_title: item.label,
+      url: null,
+    }))
+  }
+
+  return invoke<ActivityLogRecord[]>("get_activity_logs")
+}
+
+export async function createActivityLog(input: NewActivityLogRecord) {
+  return invoke<ActivityLogRecord>("create_activity_log", { input })
+}
+
+export async function getSettings() {
+  if (!isTauriRuntime()) {
+    return settingsRows.map<SettingEntryRecord>((row) => ({
+      key: row.label,
+      value: row.value,
+    }))
+  }
+
+  return invoke<SettingEntryRecord[]>("get_settings")
+}
+
+export async function setSetting(key: string, value: string) {
+  return invoke<void>("set_setting", { key, value })
+}
+
+export async function getStoplist() {
+  if (!isTauriRuntime()) {
+    return flows.flatMap<StoplistItemRecord>((flow, flowIndex) =>
+      flow.streams.slice(0, 1).map((stream, streamIndex) => ({
+        id: flowIndex * 10 + streamIndex + 1,
+        item_type: "app",
+        value: stream.name,
+      })),
+    )
+  }
+
+  return invoke<StoplistItemRecord[]>("get_stoplist")
+}
+
+export async function addStoplistItem(input: NewStoplistItemRecord) {
+  return invoke<StoplistItemRecord>("add_stoplist_item", { input })
+}
+
+export async function removeStoplistItem(id: number) {
+  return invoke<void>("remove_stoplist_item", { id })
+}
+
+function isTauriRuntime() {
+  return "__TAURI_INTERNALS__" in window
+}
+

@@ -1,3 +1,8 @@
+mod database;
+
+use database::Database;
+use tauri::Manager;
+
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
@@ -8,7 +13,21 @@ fn greet(name: &str) -> String {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet])
+        .setup(|app| {
+            let database = Database::open(app.handle())?;
+            app.manage(database);
+            Ok(())
+        })
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            database::get_activity_logs,
+            database::create_activity_log,
+            database::get_settings,
+            database::set_setting,
+            database::get_stoplist,
+            database::add_stoplist_item,
+            database::remove_stoplist_item
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
