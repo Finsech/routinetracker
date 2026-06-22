@@ -1,5 +1,5 @@
 use crate::database::{Database, NewActivityLog};
-use chrono::Utc;
+use chrono::{Duration as ChronoDuration, Utc};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -127,7 +127,7 @@ fn tracking_loop(
         idle_seconds.store(idle_duration.as_secs(), Ordering::SeqCst);
 
         if idle_duration >= IDLE_THRESHOLD {
-            close_session(&app, current.take());
+            close_session_at(&app, current.take(), timestamp_before(idle_duration));
             set_current_snapshot(&current_snapshot, None);
             thread::sleep(POLL_INTERVAL);
             continue;
@@ -158,6 +158,10 @@ fn tracking_loop(
 }
 
 fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
+    close_session_at(app, session, now());
+}
+
+fn close_session_at(app: &AppHandle, session: Option<ActiveSession>, end_time: String) {
     let Some(session) = session else {
         return;
     };
@@ -165,7 +169,7 @@ fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
     let database = app.state::<Database>();
     let result = database.insert_activity_log(NewActivityLog {
         start_time: session.start_time,
-        end_time: now(),
+        end_time,
         app_name: session.snapshot.app_name,
         window_title: session.snapshot.window_title,
         url: session.snapshot.url,
@@ -178,6 +182,13 @@ fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
 
 fn now() -> String {
     Utc::now().to_rfc3339()
+}
+
+fn timestamp_before(duration: Duration) -> String {
+    match ChronoDuration::from_std(duration) {
+        Ok(duration) => (Utc::now() - duration).to_rfc3339(),
+        Err(_) => now(),
+    }
 }
 
 fn set_current_snapshot(
