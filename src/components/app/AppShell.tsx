@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { useEffect, useState } from "react"
 import {
   Brain,
   CalendarDays,
@@ -6,13 +7,16 @@ import {
   ChevronRight,
   History,
   Monitor,
+  Play,
   Settings,
   ShieldCheck,
+  Square,
   TimerReset,
 } from "lucide-react"
 
 import { StatusLine } from "@/components/app/StatusLine"
 import { Button } from "@/components/ui/button"
+import { getTrackingStatus, startTracking, stopTracking } from "@/lib/focusflow-api"
 import type { NavItem, View } from "@/types"
 
 const navItems: NavItem[] = [
@@ -34,6 +38,31 @@ type AppShellProps = {
 }
 
 export function AppShell({ activeView, children, onViewChange }: AppShellProps) {
+  const [trackerRunning, setTrackerRunning] = useState(false)
+  const [trackerBusy, setTrackerBusy] = useState(false)
+
+  useEffect(() => {
+    getTrackingStatus()
+      .then((status) => setTrackerRunning(status.running))
+      .catch(() => setTrackerRunning(false))
+  }, [])
+
+  async function toggleTracking() {
+    setTrackerBusy(true)
+
+    try {
+      if (trackerRunning) {
+        await stopTracking()
+        setTrackerRunning(false)
+      } else {
+        await startTracking()
+        setTrackerRunning(true)
+      }
+    } finally {
+      setTrackerBusy(false)
+    }
+  }
+
   return (
     <main className="min-h-screen bg-[#F7F8F5] text-zinc-950">
       <div className="flex min-h-screen">
@@ -74,10 +103,24 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
           <div className="mt-8 border-t border-zinc-200 pt-5">
             <p className="text-xs uppercase tracking-wide text-zinc-500">Статус</p>
             <div className="mt-3 space-y-3 text-sm">
-              <StatusLine icon={Monitor} label="Трекинг" value="готовится" />
+              <StatusLine
+                icon={Monitor}
+                label="Трекинг"
+                value={trackerRunning ? "включен" : "выключен"}
+              />
               <StatusLine icon={Brain} label="LLM" value="мок-данные" />
               <StatusLine icon={ShieldCheck} label="Приватность" value="локально" />
             </div>
+            <Button
+              className="mt-4 w-full"
+              disabled={trackerBusy}
+              onClick={toggleTracking}
+              size="sm"
+              variant={trackerRunning ? "outline" : "default"}
+            >
+              {trackerRunning ? <Square className="size-4" /> : <Play className="size-4" />}
+              {trackerRunning ? "Остановить" : "Запустить"}
+            </Button>
           </div>
         </aside>
 
@@ -126,4 +169,3 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
     </main>
   )
 }
-

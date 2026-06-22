@@ -1,7 +1,9 @@
 mod database;
+mod tracker;
 
 use database::Database;
 use tauri::Manager;
+use tracker::Tracker;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -16,6 +18,7 @@ pub fn run() {
         .setup(|app| {
             let database = Database::open(app.handle())?;
             app.manage(database);
+            app.manage(Tracker::default());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -26,7 +29,10 @@ pub fn run() {
             database::set_setting,
             database::get_stoplist,
             database::add_stoplist_item,
-            database::remove_stoplist_item
+            database::remove_stoplist_item,
+            tracker::start_tracking,
+            tracker::stop_tracking,
+            tracker::get_tracking_status
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

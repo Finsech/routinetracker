@@ -26,6 +26,12 @@ export type StoplistItemRecord = {
 
 export type NewStoplistItemRecord = Omit<StoplistItemRecord, "id">
 
+export type TrackerStatusRecord = {
+  running: boolean
+}
+
+let browserTrackerRunning = false
+
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
     return timeline.map<ActivityLogRecord>((item, index) => ({
@@ -82,7 +88,32 @@ export async function removeStoplistItem(id: number) {
   return invoke<void>("remove_stoplist_item", { id })
 }
 
+export async function startTracking() {
+  if (!isTauriRuntime()) {
+    browserTrackerRunning = true
+    return
+  }
+
+  return invoke<void>("start_tracking")
+}
+
+export async function stopTracking() {
+  if (!isTauriRuntime()) {
+    browserTrackerRunning = false
+    return
+  }
+
+  return invoke<void>("stop_tracking")
+}
+
+export async function getTrackingStatus() {
+  if (!isTauriRuntime()) {
+    return { running: browserTrackerRunning }
+  }
+
+  return invoke<TrackerStatusRecord>("get_tracking_status")
+}
+
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window
 }
-

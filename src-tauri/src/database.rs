@@ -64,13 +64,37 @@ impl Database {
         })
     }
 
-    fn with_connection<T>(&self, action: impl FnOnce(&Connection) -> Result<T, String>) -> Result<T, String> {
+    fn with_connection<T>(
+        &self,
+        action: impl FnOnce(&Connection) -> Result<T, String>,
+    ) -> Result<T, String> {
         let connection = self
             .connection
             .lock()
             .map_err(|_| "Соединение с базой данных заблокировано".to_string())?;
 
         action(&connection)
+    }
+
+    pub fn insert_activity_log(&self, input: NewActivityLog) -> Result<ActivityLog, String> {
+        self.with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO activity_log (start_time, end_time, app_name, window_title, url)
+                     VALUES (?1, ?2, ?3, ?4, ?5)",
+                    params![
+                        input.start_time,
+                        input.end_time,
+                        input.app_name,
+                        input.window_title,
+                        input.url
+                    ],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let id = connection.last_insert_rowid();
+            get_activity_log_by_id(connection, id)
+        })
     }
 }
 
@@ -108,24 +132,7 @@ pub fn create_activity_log(
     database: tauri::State<Database>,
     input: NewActivityLog,
 ) -> Result<ActivityLog, String> {
-    database.with_connection(|connection| {
-        connection
-            .execute(
-                "INSERT INTO activity_log (start_time, end_time, app_name, window_title, url)
-                 VALUES (?1, ?2, ?3, ?4, ?5)",
-                params![
-                    input.start_time,
-                    input.end_time,
-                    input.app_name,
-                    input.window_title,
-                    input.url
-                ],
-            )
-            .map_err(|error| error.to_string())?;
-
-        let id = connection.last_insert_rowid();
-        get_activity_log_by_id(connection, id)
-    })
+    database.insert_activity_log(input)
 }
 
 #[tauri::command]
@@ -150,7 +157,11 @@ pub fn get_settings(database: tauri::State<Database>) -> Result<Vec<SettingEntry
 }
 
 #[tauri::command]
-pub fn set_setting(database: tauri::State<Database>, key: String, value: String) -> Result<(), String> {
+pub fn set_setting(
+    database: tauri::State<Database>,
+    key: String,
+    value: String,
+) -> Result<(), String> {
     database.with_connection(|connection| {
         connection
             .execute(
