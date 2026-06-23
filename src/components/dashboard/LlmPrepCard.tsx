@@ -9,6 +9,7 @@ import {
 } from "@/lib/llm-summary"
 
 type LlmPrepCardProps = {
+  cachedAt: string | null
   disabled?: boolean
   error: string | null
   loading: boolean
@@ -18,6 +19,7 @@ type LlmPrepCardProps = {
 }
 
 export function LlmPrepCard({
+  cachedAt,
   disabled = false,
   error,
   loading,
@@ -55,7 +57,7 @@ export function LlmPrepCard({
           </Button>
           <Button disabled={disabled || loading || totalItems === 0} onClick={onGenerate} size="sm" type="button">
             <Sparkles className="size-4" />
-            {loading ? "Группирую" : "Сгруппировать"}
+            {loading ? "Группирую" : cachedAt ? "Обновить" : "Сгруппировать"}
           </Button>
         </div>
       </div>
@@ -71,7 +73,9 @@ export function LlmPrepCard({
           <p className="text-xs text-red-600">{error}</p>
         ) : (
           <p className="text-xs text-zinc-500">
-            Локальная модель получает только JSON текущего дня и возвращает стримы и потоки.
+            {cachedAt
+              ? `Показана сохраненная группировка от ${formatCacheTime(cachedAt)}.`
+              : "Локальная модель получает только JSON текущего дня и возвращает стримы и потоки."}
           </p>
         )}
       </div>
@@ -82,6 +86,13 @@ export function LlmPrepCard({
 type SummaryStatProps = {
   label: string
   value: string
+}
+
+function formatCacheTime(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
 }
 
 function SummaryStat({ label, value }: SummaryStatProps) {

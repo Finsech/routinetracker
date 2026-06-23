@@ -41,6 +41,8 @@ pub fn run() {
             database::get_stoplist,
             database::add_stoplist_item,
             database::remove_stoplist_item,
+            database::get_llm_summary,
+            database::save_llm_summary,
             tracker::start_tracking,
             tracker::stop_tracking,
             tracker::get_tracking_status

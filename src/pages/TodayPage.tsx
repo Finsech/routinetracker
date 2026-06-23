@@ -10,17 +10,22 @@ import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
 import {
   getActivityLogs,
   getIdleLogs,
+  getLlmSummary,
   getSettings,
+  saveLlmSummary,
   updateIdleLog,
   type ActivityLogRecord,
   type IdleLogRecord,
 } from "@/lib/focusflow-api"
 import {
   DEFAULT_LLM_SETTINGS,
+  buildLlmCacheSignature,
   buildFlowsFromLlmGroups,
   buildLlmSummaryPayload,
+  parseStoredLlmGroups,
   readLlmSettings,
   requestOllamaSummary,
+  serializeLlmGroups,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
 import type { FlowSummary } from "@/types"
@@ -36,6 +41,7 @@ export function TodayPage() {
   const [llmFlows, setLlmFlows] = useState<FlowSummary[] | null>(null)
   const [llmLoading, setLlmLoading] = useState(false)
   const [llmError, setLlmError] = useState<string | null>(null)
+  const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
   const pendingIdleLog = useMemo(
     () =>
@@ -45,16 +51,9 @@ export function TodayPage() {
     [idleLogs, postponedIdleIds],
   )
   const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs), [idleLogs, logs])
-  const llmPayloadKey = useMemo(
-    () =>
-      [
-        llmPayload.date,
-        llmPayload.activity_count,
-        llmPayload.idle_count,
-        llmPayload.total_active_minutes,
-        llmPayload.total_idle_minutes,
-      ].join(":"),
-    [llmPayload],
+  const llmCacheSignature = useMemo(
+    () => buildLlmCacheSignature(llmPayload, llmSettings),
+    [llmPayload, llmSettings],
   )
   const flows = llmFlows ?? summary.flows
 
@@ -91,11 +90,6 @@ export function TodayPage() {
   }, [])
 
   useEffect(() => {
-    setLlmFlows(null)
-    setLlmError(null)
-  }, [llmPayloadKey])
-
-  useEffect(() => {
     let active = true
 
     async function loadLlmSettings() {
@@ -119,6 +113,47 @@ export function TodayPage() {
     }
   }, [])
 
+  useEffect(() => {
+    let active = true
+
+    setLlmFlows(null)
+    setLlmCachedAt(null)
+    setLlmError(null)
+
+    async function loadCachedSummary() {
+      if (llmPayload.items.length === 0) {
+        return
+      }
+
+      try {
+        const cachedSummary = await getLlmSummary({
+          date_key: llmPayload.date,
+          payload_signature: llmCacheSignature,
+          provider: llmSettings.provider,
+          model: llmSettings.model,
+        })
+
+        if (!active || !cachedSummary) {
+          return
+        }
+
+        const groups = parseStoredLlmGroups(cachedSummary.groups_json)
+        setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
+        setLlmCachedAt(cachedSummary.created_at)
+      } catch {
+        if (active) {
+          setLlmError("Не удалось загрузить сохраненную LLM-группировку")
+        }
+      }
+    }
+
+    void loadCachedSummary()
+
+    return () => {
+      active = false
+    }
+  }, [llmCacheSignature, llmPayload, llmSettings])
+
   async function generateLlmSummary() {
     setLlmLoading(true)
     setLlmError(null)
@@ -126,6 +161,19 @@ export function TodayPage() {
     try {
       const groups = await requestOllamaSummary(llmPayload, llmSettings)
       setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
+
+      try {
+        const savedSummary = await saveLlmSummary({
+          date_key: llmPayload.date,
+          payload_signature: llmCacheSignature,
+          provider: llmSettings.provider,
+          model: llmSettings.model,
+          groups_json: serializeLlmGroups(groups),
+        })
+        setLlmCachedAt(savedSummary.created_at)
+      } catch {
+        setLlmError("Группировка получена, но не сохранена в SQLite")
+      }
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ Ollama"
       setLlmError(`Ollama недоступна или модель не готова: ${message}`)
@@ -189,6 +237,7 @@ export function TodayPage() {
         </div>
 
         <LlmPrepCard
+          cachedAt={llmCachedAt}
           error={llmError}
           loading={llmLoading}
           onGenerate={() => void generateLlmSummary()}

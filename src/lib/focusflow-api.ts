@@ -38,6 +38,23 @@ export type StoplistItemRecord = {
 
 export type NewStoplistItemRecord = Omit<StoplistItemRecord, "id">
 
+export type LlmSummaryRecord = {
+  id: number
+  date_key: string
+  payload_signature: string
+  provider: string
+  model: string
+  groups_json: string
+  created_at: string
+}
+
+export type LlmSummaryLookup = Pick<
+  LlmSummaryRecord,
+  "date_key" | "payload_signature" | "provider" | "model"
+>
+
+export type SaveLlmSummaryInput = Omit<LlmSummaryRecord, "id" | "created_at">
+
 export type TrackerStatusRecord = {
   running: boolean
   current_app: string | null
@@ -49,6 +66,7 @@ let browserTrackerRunning = false
 let browserStoplist: StoplistItemRecord[] | null = null
 let browserIdleLogs: IdleLogRecord[] | null = null
 let browserSettings: SettingEntryRecord[] | null = null
+let browserLlmSummaries: LlmSummaryRecord[] = []
 
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
@@ -152,6 +170,49 @@ export async function removeStoplistItem(id: number) {
   }
 
   return invoke<void>("remove_stoplist_item", { id })
+}
+
+export async function getLlmSummary(input: LlmSummaryLookup) {
+  if (!isTauriRuntime()) {
+    return (
+      browserLlmSummaries.find(
+        (summary) =>
+          summary.date_key === input.date_key &&
+          summary.payload_signature === input.payload_signature &&
+          summary.provider === input.provider &&
+          summary.model === input.model,
+      ) ?? null
+    )
+  }
+
+  return invoke<LlmSummaryRecord | null>("get_llm_summary", input)
+}
+
+export async function saveLlmSummary(input: SaveLlmSummaryInput) {
+  if (!isTauriRuntime()) {
+    const existing = browserLlmSummaries.find(
+      (summary) =>
+        summary.date_key === input.date_key &&
+        summary.payload_signature === input.payload_signature &&
+        summary.provider === input.provider &&
+        summary.model === input.model,
+    )
+
+    const nextSummary = {
+      ...input,
+      id: existing?.id ?? Math.max(0, ...browserLlmSummaries.map((summary) => summary.id)) + 1,
+      created_at: new Date().toISOString(),
+    }
+
+    browserLlmSummaries = [
+      ...browserLlmSummaries.filter((summary) => summary.id !== nextSummary.id),
+      nextSummary,
+    ]
+
+    return nextSummary
+  }
+
+  return invoke<LlmSummaryRecord>("save_llm_summary", { input })
 }
 
 export async function startTracking() {

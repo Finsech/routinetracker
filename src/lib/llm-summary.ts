@@ -144,6 +144,37 @@ export function stringifyLlmPayload(payload: LlmSummaryPayload) {
   return JSON.stringify(payload, null, 2)
 }
 
+export function buildLlmCacheSignature(
+  payload: LlmSummaryPayload,
+  settings: LlmProviderSettings,
+) {
+  return JSON.stringify({
+    version: 1,
+    date: payload.date,
+    provider: settings.provider,
+    model: settings.model,
+    items: payload.items.map((item) => ({
+      index: item.index,
+      kind: item.kind,
+      app: item.app,
+      title: item.title,
+      url: item.url,
+      note: item.note,
+      start_time: item.start_time,
+      end_time: item.end_time,
+      duration_minutes: item.duration_minutes,
+    })),
+  })
+}
+
+export function serializeLlmGroups(groups: LlmSummaryGroup[]) {
+  return JSON.stringify(groups)
+}
+
+export function parseStoredLlmGroups(value: string) {
+  return parseLlmGroups(value)
+}
+
 export async function requestOllamaSummary(
   payload: LlmSummaryPayload,
   settings: LlmProviderSettings,

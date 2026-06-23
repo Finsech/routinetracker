@@ -1,4 +1,4 @@
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
@@ -66,10 +66,30 @@ pub struct StoplistItem {
     pub value: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct LlmSummary {
+    pub id: i64,
+    pub date_key: String,
+    pub payload_signature: String,
+    pub provider: String,
+    pub model: String,
+    pub groups_json: String,
+    pub created_at: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewStoplistItem {
     pub item_type: String,
     pub value: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SaveLlmSummaryInput {
+    pub date_key: String,
+    pub payload_signature: String,
+    pub provider: String,
+    pub model: String,
+    pub groups_json: String,
 }
 
 impl Database {
@@ -311,6 +331,83 @@ pub fn remove_stoplist_item(database: tauri::State<Database>, id: i64) -> Result
     })
 }
 
+#[tauri::command]
+pub fn get_llm_summary(
+    database: tauri::State<Database>,
+    date_key: String,
+    payload_signature: String,
+    provider: String,
+    model: String,
+) -> Result<Option<LlmSummary>, String> {
+    database.with_connection(|connection| {
+        connection
+            .query_row(
+                "SELECT id, date_key, payload_signature, provider, model, groups_json, created_at
+                 FROM llm_summary
+                 WHERE date_key = ?1
+                   AND payload_signature = ?2
+                   AND provider = ?3
+                   AND model = ?4
+                 ORDER BY created_at DESC
+                 LIMIT 1",
+                params![date_key, payload_signature, provider, model],
+                |row| {
+                    Ok(LlmSummary {
+                        id: row.get(0)?,
+                        date_key: row.get(1)?,
+                        payload_signature: row.get(2)?,
+                        provider: row.get(3)?,
+                        model: row.get(4)?,
+                        groups_json: row.get(5)?,
+                        created_at: row.get(6)?,
+                    })
+                },
+            )
+            .optional()
+            .map_err(|error| error.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn save_llm_summary(
+    database: tauri::State<Database>,
+    input: SaveLlmSummaryInput,
+) -> Result<LlmSummary, String> {
+    database.with_connection(|connection| {
+        connection
+            .execute(
+                "INSERT INTO llm_summary (
+                    date_key,
+                    payload_signature,
+                    provider,
+                    model,
+                    groups_json
+                 )
+                 VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(date_key, payload_signature, provider, model)
+                 DO UPDATE SET
+                    groups_json = excluded.groups_json,
+                    created_at = CURRENT_TIMESTAMP",
+                params![
+                    input.date_key,
+                    input.payload_signature,
+                    input.provider,
+                    input.model,
+                    input.groups_json
+                ],
+            )
+            .map_err(|error| error.to_string())?;
+
+        get_llm_summary_by_key(
+            connection,
+            &input.date_key,
+            &input.payload_signature,
+            &input.provider,
+            &input.model,
+        )
+    })
+}
+
 fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
@@ -349,6 +446,17 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL,
                 value TEXT NOT NULL UNIQUE
+            );
+
+            CREATE TABLE IF NOT EXISTS llm_summary (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date_key TEXT NOT NULL,
+                payload_signature TEXT NOT NULL,
+                provider TEXT NOT NULL,
+                model TEXT NOT NULL,
+                groups_json TEXT NOT NULL,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(date_key, payload_signature, provider, model)
             );
 
             INSERT OR IGNORE INTO settings (key, value) VALUES
@@ -411,6 +519,38 @@ fn get_idle_log_by_id(connection: &Connection, id: i64) -> Result<IdleLog, Strin
                     note: row.get(3)?,
                     ignored: row.get(4)?,
                     reviewed: row.get(5)?,
+                })
+            },
+        )
+        .map_err(|error| error.to_string())
+}
+
+fn get_llm_summary_by_key(
+    connection: &Connection,
+    date_key: &str,
+    payload_signature: &str,
+    provider: &str,
+    model: &str,
+) -> Result<LlmSummary, String> {
+    connection
+        .query_row(
+            "SELECT id, date_key, payload_signature, provider, model, groups_json, created_at
+             FROM llm_summary
+             WHERE date_key = ?1
+               AND payload_signature = ?2
+               AND provider = ?3
+               AND model = ?4
+             LIMIT 1",
+            params![date_key, payload_signature, provider, model],
+            |row| {
+                Ok(LlmSummary {
+                    id: row.get(0)?,
+                    date_key: row.get(1)?,
+                    payload_signature: row.get(2)?,
+                    provider: row.get(3)?,
+                    model: row.get(4)?,
+                    groups_json: row.get(5)?,
+                    created_at: row.get(6)?,
                 })
             },
         )
