@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react"
-import { Download, Trash2 } from "lucide-react"
+import { Download, Globe, Shield, Sparkles, Trash2, Workflow } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { settingsRows } from "@/data/mock"
@@ -107,14 +107,20 @@ export function SettingsPage() {
       return
     }
 
-    if (stoplist.some((item) => item.item_type === "app" && item.value.toLowerCase() === value.toLowerCase())) {
+    if (
+      stoplist.some(
+        (item) => item.item_type === "app" && item.value.toLowerCase() === value.toLowerCase(),
+      )
+    ) {
       setNewAppName("")
       return
     }
 
     try {
       const nextItem = await addStoplistItem({ item_type: "app", value })
-      setStoplist((current) => [...current, nextItem].sort((left, right) => left.value.localeCompare(right.value)))
+      setStoplist((current) =>
+        [...current, nextItem].sort((left, right) => left.value.localeCompare(right.value)),
+      )
       setNewAppName("")
       setError(null)
     } catch {
@@ -171,160 +177,234 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
           {error}
         </div>
       )}
 
-      <section className="rounded-md border border-zinc-200 bg-white">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">Параметры приложения</h2>
-          <p className="text-xs text-zinc-500">Базовые параметры локального режима</p>
-        </div>
-        <div className="divide-y divide-zinc-100">
-          {visibleRows.map((row) => (
-            <div className="flex items-center justify-between gap-4 px-4 py-3" key={row.label}>
-              <span className="text-sm text-zinc-600">{row.label}</span>
-              <span className="text-sm font-medium">{row.value}</span>
+      <section className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_left_bottom,rgba(175,220,188,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(255,252,247,0.9)_100%)] px-6 py-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+        <p className="font-['Georgia'] text-[2rem] leading-none text-[#24382F]">Настройки</p>
+        <p className="mt-3 max-w-[720px] text-sm leading-6 text-[#6C7E74]">
+          Здесь живет служебный слой FocusFlow: локальная модель, экспорт, browser bridge и
+          стоп-лист. Он должен быть аккуратным и спокойным, но без лишней декоративности.
+        </p>
+      </section>
+
+      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="space-y-5">
+          <SettingsCard
+            description="Базовые параметры локального режима."
+            icon={Shield}
+            title="Параметры приложения"
+          >
+            <div className="grid gap-3">
+              {visibleRows.map((row) => (
+                <SettingMetric key={row.label} label={row.label} value={row.value} />
+              ))}
             </div>
-          ))}
-        </div>
-      </section>
+          </SettingsCard>
 
-      <section className="rounded-md border border-zinc-200 bg-white">
-        <div className="flex items-center justify-between gap-4 px-4 py-3">
-          <div>
-            <h2 className="text-sm font-semibold">Экспорт</h2>
-            <p className="text-xs text-zinc-500">Логи, простои, настройки, стоп-лист и LLM-сводки в одном JSON</p>
-          </div>
-          <Button disabled={exporting} onClick={() => void exportData()} type="button" variant="outline">
-            <Download className="size-4" data-icon="inline-start" />
-            {exporting ? "Готовлю" : "Скачать JSON"}
-          </Button>
-        </div>
-      </section>
-
-      <section className="rounded-md border border-zinc-200 bg-white">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">Браузер</h2>
-          <p className="text-xs text-zinc-500">Локальный мост для получения URL активной вкладки</p>
-        </div>
-        <div className="divide-y divide-zinc-100">
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <span className="text-sm text-zinc-600">Статус</span>
-            <span className="text-sm font-medium">
-              {browserBridgeStatus?.running ? "Работает" : "Не запущен"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-4 px-4 py-3">
-            <span className="text-sm text-zinc-600">Порт</span>
-            <span className="text-sm font-medium">{browserBridgeStatus?.port ?? 17653}</span>
-          </div>
-          <div className="grid gap-1 px-4 py-3">
-            <span className="text-sm text-zinc-600">Последняя вкладка</span>
-            <span className="truncate text-sm font-medium">
-              {browserBridgeStatus?.last_activity?.url ?? "Нет данных от расширения"}
-            </span>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-md border border-zinc-200 bg-white">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">LLM</h2>
-          <p className="text-xs text-zinc-500">Локальная группировка активностей через Ollama</p>
-        </div>
-
-        <div className="grid gap-3 px-4 py-3">
-          <label className="grid gap-1">
-            <span className="text-xs font-medium text-zinc-500">Провайдер</span>
-            <select
-              className="h-8 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none focus:border-zinc-400"
-              onChange={() => updateLlmSettings({ provider: "ollama" })}
-              value={llmSettings.provider}
-            >
-              <option value="ollama">Ollama</option>
-            </select>
-          </label>
-
-          <label className="grid gap-1">
-            <span className="text-xs font-medium text-zinc-500">Адрес Ollama</span>
-            <input
-              className="h-8 rounded-md border border-zinc-200 px-3 text-sm outline-none focus:border-zinc-400"
-              onChange={(event) => updateLlmSettings({ ollamaUrl: event.target.value })}
-              placeholder="http://localhost:11434"
-              value={llmSettings.ollamaUrl}
-            />
-          </label>
-
-          <label className="grid gap-1">
-            <span className="text-xs font-medium text-zinc-500">Модель</span>
-            <input
-              className="h-8 rounded-md border border-zinc-200 px-3 text-sm outline-none focus:border-zinc-400"
-              onChange={(event) => updateLlmSettings({ model: event.target.value })}
-              placeholder="qwen2.5:7b-instruct"
-              value={llmSettings.model}
-            />
-          </label>
-        </div>
-
-        <div className="flex justify-end border-t border-zinc-100 px-4 py-3">
-          <Button disabled={savingLlm} onClick={() => void saveLlmSettings()} type="button">
-            {savingLlm ? "Сохраняю" : "Сохранить LLM"}
-          </Button>
-        </div>
-      </section>
-
-      <section className="rounded-md border border-zinc-200 bg-white">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-sm font-semibold">Стоп-лист приложений</h2>
-          <p className="text-xs text-zinc-500">Эти процессы не попадают в логи активности</p>
-        </div>
-
-        <div className="flex gap-2 border-b border-zinc-100 px-4 py-3">
-          <input
-            className="h-8 min-w-0 flex-1 rounded-md border border-zinc-200 px-3 text-sm outline-none focus:border-zinc-400"
-            onChange={(event) => setNewAppName(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                void addAppToStoplist()
-              }
-            }}
-            placeholder="process.exe"
-            value={newAppName}
-          />
-          <Button onClick={() => void addAppToStoplist()} type="button">
-            Добавить
-          </Button>
-        </div>
-
-        <div className="divide-y divide-zinc-100">
-          {stoplist.length === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-zinc-500">Стоп-лист пуст</div>
-          )}
-
-          {stoplist.map((item) => (
-            <div className="flex items-center justify-between gap-3 px-4 py-3" key={item.id}>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{item.value}</p>
-                <p className="text-xs text-zinc-500">{item.item_type === "app" ? "Приложение" : "Сайт"}</p>
-              </div>
+          <SettingsCard
+            description="Логи, простои, настройки, стоп-лист и сохраненные LLM-сводки в одном JSON."
+            icon={Download}
+            title="Экспорт"
+          >
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm leading-6 text-[#71837A]">
+                Удобно для бэкапа, переноса данных и ручной проверки содержимого локальной базы.
+              </p>
               <Button
-                aria-label={`Удалить ${item.value}`}
-                onClick={() => void removeFromStoplist(item.id)}
-                size="icon-sm"
+                className="rounded-full px-4"
+                disabled={exporting}
+                onClick={() => void exportData()}
                 type="button"
-                variant="ghost"
+                variant="outline"
               >
-                <Trash2 className="size-4" />
+                <Download className="size-4" data-icon="inline-start" />
+                {exporting ? "Готовлю" : "Скачать JSON"}
               </Button>
             </div>
-          ))}
+          </SettingsCard>
         </div>
-      </section>
+
+        <div className="space-y-5">
+          <SettingsCard
+            description="Локальный мост для получения URL активной вкладки."
+            icon={Globe}
+            title="Browser bridge"
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SettingMetric
+                label="Статус"
+                value={browserBridgeStatus?.running ? "Работает" : "Не запущен"}
+              />
+              <SettingMetric label="Порт" value={String(browserBridgeStatus?.port ?? 17653)} />
+            </div>
+            <div className="mt-3 rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+              <p className="text-sm text-[#73867A]">Последняя вкладка</p>
+              <p className="mt-2 truncate text-sm font-medium text-[#2B4236]">
+                {browserBridgeStatus?.last_activity?.url ?? "Нет данных от расширения"}
+              </p>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard
+            description="Локальная группировка активностей через Ollama."
+            icon={Sparkles}
+            title="LLM"
+          >
+            <div className="grid gap-4">
+              <Field label="Провайдер">
+                <select
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  onChange={() => updateLlmSettings({ provider: "ollama" })}
+                  value={llmSettings.provider}
+                >
+                  <option value="ollama">Ollama</option>
+                </select>
+              </Field>
+
+              <Field label="Адрес Ollama">
+                <input
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  onChange={(event) => updateLlmSettings({ ollamaUrl: event.target.value })}
+                  placeholder="http://localhost:11434"
+                  value={llmSettings.ollamaUrl}
+                />
+              </Field>
+
+              <Field label="Модель">
+                <input
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  onChange={(event) => updateLlmSettings({ model: event.target.value })}
+                  placeholder="qwen2.5:7b-instruct"
+                  value={llmSettings.model}
+                />
+              </Field>
+            </div>
+
+            <div className="mt-5 flex justify-end">
+              <Button
+                className="rounded-full px-4"
+                disabled={savingLlm}
+                onClick={() => void saveLlmSettings()}
+                type="button"
+              >
+                {savingLlm ? "Сохраняю" : "Сохранить LLM"}
+              </Button>
+            </div>
+          </SettingsCard>
+
+          <SettingsCard
+            description="Эти процессы не попадают в лог активности."
+            icon={Workflow}
+            title="Стоп-лист приложений"
+          >
+            <div className="flex gap-2">
+              <input
+                className="h-11 min-w-0 flex-1 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                onChange={(event) => setNewAppName(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    void addAppToStoplist()
+                  }
+                }}
+                placeholder="process.exe"
+                value={newAppName}
+              />
+              <Button className="rounded-full px-4" onClick={() => void addAppToStoplist()} type="button">
+                Добавить
+              </Button>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {stoplist.length === 0 && (
+                <div className="rounded-[20px] border border-dashed border-[#D7E4DA] bg-[#FBFDFB] px-4 py-5 text-center text-sm text-[#788981]">
+                  Стоп-лист пока пуст.
+                </div>
+              )}
+
+              {stoplist.map((item) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
+                  key={item.id}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-[#263C31]">{item.value}</p>
+                    <p className="mt-1 text-xs text-[#7A8C83]">
+                      {item.item_type === "app" ? "Приложение" : "Сайт"}
+                    </p>
+                  </div>
+                  <Button
+                    aria-label={`Удалить ${item.value}`}
+                    onClick={() => void removeFromStoplist(item.id)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </SettingsCard>
+        </div>
+      </div>
     </div>
+  )
+}
+
+function SettingsCard({
+  children,
+  description,
+  icon: Icon,
+  title,
+}: {
+  children: React.ReactNode
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+  title: string
+}) {
+  return (
+    <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+      <div className="flex items-start gap-3">
+        <div className="flex size-11 items-center justify-center rounded-full bg-[#F1F7F2] text-[#5A9A73]">
+          <Icon className="size-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="font-['Georgia'] text-[1.55rem] leading-none text-[#24382F]">{title}</p>
+          <p className="mt-2 text-sm leading-6 text-[#71837A]">{description}</p>
+        </div>
+      </div>
+
+      <div className="mt-5">{children}</div>
+    </section>
+  )
+}
+
+function SettingMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <p className="text-sm text-[#73867A]">{label}</p>
+      <p className="mt-2 text-[1.02rem] font-medium text-[#2B4236]">{value}</p>
+    </div>
+  )
+}
+
+function Field({
+  children,
+  label,
+}: {
+  children: React.ReactNode
+  label: string
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="text-sm text-[#73867A]">{label}</span>
+      {children}
+    </label>
   )
 }
 
