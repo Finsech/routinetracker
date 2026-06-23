@@ -1,5 +1,5 @@
 use crate::database::{Database, NewActivityLog, NewIdleLog};
-use chrono::{Duration as ChronoDuration, Utc};
+use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
@@ -9,6 +9,7 @@ use tauri::{AppHandle, Manager};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 const IDLE_THRESHOLD: Duration = Duration::from_secs(10 * 60);
+const MIN_ACTIVITY_DURATION: Duration = Duration::from_secs(5);
 
 #[derive(Default)]
 pub struct Tracker {
@@ -180,6 +181,10 @@ fn close_session_at(app: &AppHandle, session: Option<ActiveSession>, end_time: S
         return;
     };
 
+    if !should_save_session(&session.start_time, &end_time) {
+        return;
+    }
+
     let database = app.state::<Database>();
     let result = database.insert_activity_log(NewActivityLog {
         start_time: session.start_time,
@@ -191,6 +196,20 @@ fn close_session_at(app: &AppHandle, session: Option<ActiveSession>, end_time: S
 
     if let Err(error) = result {
         eprintln!("Не удалось сохранить активность: {error}");
+    }
+}
+
+fn should_save_session(start_time: &str, end_time: &str) -> bool {
+    let Ok(start) = DateTime::parse_from_rfc3339(start_time) else {
+        return true;
+    };
+    let Ok(end) = DateTime::parse_from_rfc3339(end_time) else {
+        return true;
+    };
+
+    match (end.with_timezone(&Utc) - start.with_timezone(&Utc)).to_std() {
+        Ok(duration) => duration >= MIN_ACTIVITY_DURATION,
+        Err(_) => false,
     }
 }
 
