@@ -47,6 +47,7 @@ export type TrackerStatusRecord = {
 
 let browserTrackerRunning = false
 let browserStoplist: StoplistItemRecord[] | null = null
+let browserIdleLogs: IdleLogRecord[] | null = null
 
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
@@ -71,18 +72,7 @@ export async function createActivityLog(input: NewActivityLogRecord) {
 
 export async function getIdleLogs() {
   if (!isTauriRuntime()) {
-    const dateKey = mockDateKey()
-
-    return [
-      {
-        id: 1,
-        start_time: `${dateKey}T12:00:00`,
-        end_time: `${dateKey}T12:30:00`,
-        note: null,
-        ignored: false,
-        reviewed: false,
-      },
-    ]
+    return getBrowserIdleLogs()
   }
 
   return invoke<IdleLogRecord[]>("get_idle_logs")
@@ -93,6 +83,19 @@ export async function createIdleLog(input: NewIdleLogRecord) {
 }
 
 export async function updateIdleLog(id: number, input: UpdateIdleLogRecord) {
+  if (!isTauriRuntime()) {
+    const logs = getBrowserIdleLogs()
+    const updatedLog = logs.find((log) => log.id === id)
+
+    if (!updatedLog) {
+      throw new Error("Idle log not found")
+    }
+
+    Object.assign(updatedLog, input)
+    browserIdleLogs = logs.map((log) => (log.id === id ? updatedLog : log))
+    return updatedLog
+  }
+
   return invoke<IdleLogRecord>("update_idle_log", { id, input })
 }
 
@@ -190,6 +193,25 @@ function getBrowserStoplist() {
   }
 
   return browserStoplist
+}
+
+function getBrowserIdleLogs() {
+  if (!browserIdleLogs) {
+    const dateKey = mockDateKey()
+
+    browserIdleLogs = [
+      {
+        id: 1,
+        start_time: `${dateKey}T12:00:00`,
+        end_time: `${dateKey}T12:30:00`,
+        note: null,
+        ignored: false,
+        reviewed: false,
+      },
+    ]
+  }
+
+  return browserIdleLogs
 }
 
 function mockEndTime(dateKey: string, start: string, index: number) {

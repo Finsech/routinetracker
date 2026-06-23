@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { X } from "lucide-react"
 
 import { DayTimeline } from "@/components/dashboard/DayTimeline"
 import { FlowCard } from "@/components/dashboard/FlowCard"
@@ -19,10 +20,14 @@ export function TodayPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [idleNote, setIdleNote] = useState("")
+  const [postponedIdleIds, setPostponedIdleIds] = useState<number[]>([])
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
   const pendingIdleLog = useMemo(
-    () => idleLogs.find((log) => !log.reviewed && !log.ignored) ?? null,
-    [idleLogs],
+    () =>
+      idleLogs.find(
+        (log) => !log.reviewed && !log.ignored && !postponedIdleIds.includes(log.id),
+      ) ?? null,
+    [idleLogs, postponedIdleIds],
   )
 
   useEffect(() => {
@@ -72,10 +77,22 @@ export function TodayPage() {
       setIdleLogs((currentLogs) =>
         currentLogs.map((log) => (log.id === updatedLog.id ? updatedLog : log)),
       )
+      setPostponedIdleIds((currentIds) => currentIds.filter((id) => id !== updatedLog.id))
       setIdleNote("")
     } catch {
       setError("Не удалось сохранить уточнение простоя")
     }
+  }
+
+  function postponeIdleReview() {
+    if (!pendingIdleLog) {
+      return
+    }
+
+    setPostponedIdleIds((currentIds) =>
+      currentIds.includes(pendingIdleLog.id) ? currentIds : [...currentIds, pendingIdleLog.id],
+    )
+    setIdleNote("")
   }
 
   return (
@@ -119,6 +136,7 @@ export function TodayPage() {
           note={idleNote}
           onIgnore={() => void reviewIdleLog({ ignored: true, note: null })}
           onNoteChange={setIdleNote}
+          onPostpone={postponeIdleReview}
           onSave={() =>
             void reviewIdleLog({
               ignored: false,
@@ -136,6 +154,7 @@ type IdleReviewDialogProps = {
   note: string
   onIgnore: () => void
   onNoteChange: (note: string) => void
+  onPostpone: () => void
   onSave: () => void
 }
 
@@ -144,6 +163,7 @@ function IdleReviewDialog({
   note,
   onIgnore,
   onNoteChange,
+  onPostpone,
   onSave,
 }: IdleReviewDialogProps) {
   const start = formatTime(idleLog.start_time)
@@ -152,7 +172,17 @@ function IdleReviewDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-4">
-      <section className="w-full max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-xl">
+      <section className="relative w-full max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-xl">
+        <Button
+          aria-label="Закрыть"
+          className="absolute right-3 top-3"
+          onClick={onPostpone}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <X className="size-4" />
+        </Button>
         <div>
           <h2 className="text-sm font-semibold">Уточнить простой</h2>
           <p className="mt-1 text-xs text-zinc-500">
@@ -168,6 +198,9 @@ function IdleReviewDialog({
         />
 
         <div className="mt-4 flex justify-end gap-2">
+          <Button onClick={onPostpone} type="button" variant="ghost">
+            Позже
+          </Button>
           <Button onClick={onIgnore} type="button" variant="outline">
             Игнорировать
           </Button>
