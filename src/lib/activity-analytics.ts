@@ -195,11 +195,11 @@ function buildYearHeatmap(
   idleLogs: IdleLogRecord[],
   date: Date,
 ): Pick<HistoryActivitySummary, "heatmap" | "heatmapMonths"> {
-  const endDate = new Date(date)
+  const year = date.getFullYear()
+  const startDate = new Date(year, 0, 1)
+  const endDate = new Date(year, 11, 31)
+  startDate.setHours(0, 0, 0, 0)
   endDate.setHours(0, 0, 0, 0)
-
-  const startDate = new Date(endDate)
-  startDate.setDate(startDate.getDate() - 364)
 
   const gridStart = startOfWeekSunday(startDate)
   const gridEnd = endOfWeekSaturday(endDate)
@@ -225,7 +225,12 @@ function buildYearHeatmap(
     })
 
     const monthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`
-    if (cursor.getDate() <= 7 && !seenMonths.has(monthKey)) {
+    if (
+      cursor >= startDate &&
+      cursor <= endDate &&
+      cursor.getDate() <= 7 &&
+      !seenMonths.has(monthKey)
+    ) {
       heatmapMonths.push({
         label: cursor.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
         weekIndex,
