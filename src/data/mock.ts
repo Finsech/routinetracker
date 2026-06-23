@@ -53,6 +53,6 @@ export const settingsRows: SettingRow[] = [
   { label: "Автозапуск", value: "Выключен" },
   { label: "LLM-провайдер", value: "ollama" },
   { label: "Ollama", value: "http://localhost:11434" },
-  { label: "LLM-модель", value: "gpt-oss:20b" },
+  { label: "LLM-модель", value: "qwen2.5:7b-instruct" },
   { label: "Экспорт", value: "JSON" },
 ]

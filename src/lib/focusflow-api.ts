@@ -232,7 +232,7 @@ function getBrowserSettings() {
       { key: "autostart", value: "Выключен" },
       { key: "llm_provider", value: "ollama" },
       { key: "ollama_url", value: "http://localhost:11434" },
-      { key: "llm_model", value: "gpt-oss:20b" },
+      { key: "llm_model", value: "qwen2.5:7b-instruct" },
       { key: "export_format", value: "JSON" },
     ]
   }

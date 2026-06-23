@@ -357,8 +357,12 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 ('autostart', 'Выключен'),
                 ('llm_provider', 'ollama'),
                 ('ollama_url', 'http://localhost:11434'),
-                ('llm_model', 'gpt-oss:20b'),
+                ('llm_model', 'qwen2.5:7b-instruct'),
                 ('export_format', 'JSON');
+
+            UPDATE settings
+            SET value = 'qwen2.5:7b-instruct'
+            WHERE key = 'llm_model' AND value = 'gpt-oss:20b';
             ",
         )
         .map_err(|error| format!("Не удалось применить миграции SQLite: {error}"))?;

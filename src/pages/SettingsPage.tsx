@@ -184,7 +184,7 @@ export function SettingsPage() {
             <input
               className="h-8 rounded-md border border-zinc-200 px-3 text-sm outline-none focus:border-zinc-400"
               onChange={(event) => updateLlmSettings({ model: event.target.value })}
-              placeholder="gpt-oss:20b"
+              placeholder="qwen2.5:7b-instruct"
               value={llmSettings.model}
             />
           </label>

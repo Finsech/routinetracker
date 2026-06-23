@@ -45,10 +45,35 @@ type OllamaGenerateResponse = {
   error?: string
 }
 
+const LLM_RESPONSE_SCHEMA = {
+  type: "object",
+  properties: {
+    tasks: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          stream_name: { type: "string" },
+          flow_name: {
+            type: "string",
+            enum: ["Work", "Learning", "Communication", "Entertainment", "Routine"],
+          },
+          activities: {
+            type: "array",
+            items: { type: "integer" },
+          },
+        },
+        required: ["stream_name", "flow_name", "activities"],
+      },
+    },
+  },
+  required: ["tasks"],
+} as const
+
 export const DEFAULT_LLM_SETTINGS: LlmProviderSettings = {
   provider: "ollama",
   ollamaUrl: "http://localhost:11434",
-  model: "gpt-oss:20b",
+  model: "qwen2.5:7b-instruct",
 }
 
 const FLOW_ACCENTS: Record<string, string> = {
@@ -57,6 +82,14 @@ const FLOW_ACCENTS: Record<string, string> = {
   Общение: "#A855F7",
   Развлечения: "#F97316",
   Рутина: "#F59E0B",
+}
+
+const FLOW_NAME_MAP: Record<string, string> = {
+  Work: "Работа",
+  Learning: "Обучение",
+  Communication: "Общение",
+  Entertainment: "Развлечения",
+  Routine: "Рутина",
 }
 
 export function buildLlmSummaryPayload(
@@ -128,9 +161,9 @@ export async function requestOllamaSummary(
       model: settings.model,
       prompt: buildLlmPrompt(payload),
       stream: false,
-      format: "json",
+      format: LLM_RESPONSE_SCHEMA,
       options: {
-        temperature: 0.1,
+        temperature: 0,
       },
     }),
   })
@@ -253,40 +286,46 @@ function buildLlmPrompt(payload: LlmSummaryPayload) {
     duration_minutes: item.duration_minutes,
   }))
 
-  return `Ты ассистент по продуктивности. Сгруппируй лог активности пользователя в конкретные стримы, а каждому стриму назначь поток.
+  return `You are a productivity assistant. Group the user's activity log into concrete tasks or projects.
 
-Разрешенные потоки: Работа, Обучение, Общение, Развлечения, Рутина.
+Return only JSON that matches the provided schema. Do not use markdown. Do not explain.
 
-Правила:
-- Верни только JSON-массив без пояснений.
-- Не добавляй активности, которых нет во входе.
-- В поле activities верни индексы исходных записей.
-- Idle-записи с note учитывай как обычную активность; idle без note относись к Рутине.
+Rules:
+- Put groups into the "tasks" array.
+- "activities" must contain only numeric indexes from the input.
+- Do not leave a group with an empty "activities" array.
+- Do not invent activity indexes.
+- Use exactly one flow_name value: Work, Learning, Communication, Entertainment, Routine.
+- Use concise stream_name values. Russian stream names are allowed when the input is Russian.
+- Treat idle items with a note as normal user activity.
+- Put idle items without a note into Routine.
 
-Формат ответа:
-[
-  {
-    "stream_name": "Название конкретной задачи или проекта",
-    "flow_name": "Работа",
-    "activities": [0, 1]
-  }
-]
-
-Вход:
+Input:
 ${JSON.stringify(compactItems, null, 2)}`
 }
 
 function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
-  const jsonText = extractJsonArray(rawResponse)
+  const jsonText = extractJson(rawResponse)
   const parsed = JSON.parse(jsonText) as unknown
+  const groups = Array.isArray(parsed) ? parsed : pickGroupsArray(parsed)
 
-  if (!Array.isArray(parsed)) {
+  if (!groups) {
     throw new Error("LLM вернула не JSON-массив")
   }
 
-  return parsed
+  return groups
     .map((item) => normalizeGroup(item))
     .filter((item): item is LlmSummaryGroup => item !== null)
+}
+
+function pickGroupsArray(value: unknown) {
+  if (!value || typeof value !== "object") {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const candidates = [record.tasks, record.groups, record.streams, record.result, record.data]
+  return candidates.find(Array.isArray) ?? null
 }
 
 function normalizeGroup(value: unknown): LlmSummaryGroup | null {
@@ -296,7 +335,8 @@ function normalizeGroup(value: unknown): LlmSummaryGroup | null {
 
   const item = value as Record<string, unknown>
   const streamName = typeof item.stream_name === "string" ? item.stream_name.trim() : ""
-  const flowName = typeof item.flow_name === "string" ? item.flow_name.trim() : ""
+  const rawFlowName = typeof item.flow_name === "string" ? item.flow_name.trim() : ""
+  const flowName = FLOW_NAME_MAP[rawFlowName] ?? rawFlowName
   const activities = Array.isArray(item.activities)
     ? item.activities.filter((index): index is number => Number.isInteger(index) && index >= 0)
     : []
@@ -312,16 +352,22 @@ function normalizeGroup(value: unknown): LlmSummaryGroup | null {
   }
 }
 
-function extractJsonArray(value: string) {
+function extractJson(value: string) {
   const trimmed = value.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim()
-  const start = trimmed.indexOf("[")
-  const end = trimmed.lastIndexOf("]")
+  const arrayStart = trimmed.indexOf("[")
+  const arrayEnd = trimmed.lastIndexOf("]")
+  const objectStart = trimmed.indexOf("{")
+  const objectEnd = trimmed.lastIndexOf("}")
 
-  if (start === -1 || end === -1 || end <= start) {
-    throw new Error("LLM не вернула JSON с группировкой")
+  if (arrayStart !== -1 && arrayEnd !== -1 && arrayEnd > arrayStart) {
+    return trimmed.slice(arrayStart, arrayEnd + 1)
   }
 
-  return trimmed.slice(start, end + 1)
+  if (objectStart !== -1 && objectEnd !== -1 && objectEnd > objectStart) {
+    return trimmed.slice(objectStart, objectEnd + 1)
+  }
+
+  throw new Error("LLM не вернула JSON с группировкой")
 }
 
 function normalizeOllamaUrl(value: string) {
