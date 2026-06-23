@@ -1,4 +1,4 @@
-use crate::database::{Database, NewActivityLog, NewIdleLog};
+use crate::database::{Database, NewActivityLog, NewIdleLog, StoplistItem};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -146,6 +146,13 @@ fn tracking_loop(
         }
 
         if let Some(snapshot) = read_active_window() {
+            if is_stoplisted(&app, &snapshot) {
+                close_session(&app, current.take());
+                set_current_snapshot(&current_snapshot, None);
+                thread::sleep(POLL_INTERVAL);
+                continue;
+            }
+
             set_current_snapshot(&current_snapshot, Some(snapshot.clone()));
 
             if current
@@ -170,6 +177,33 @@ fn tracking_loop(
     }
     set_current_snapshot(&current_snapshot, None);
     idle_seconds.store(0, Ordering::SeqCst);
+}
+
+fn is_stoplisted(app: &AppHandle, snapshot: &WindowSnapshot) -> bool {
+    let database = app.state::<Database>();
+
+    match database.list_stoplist() {
+        Ok(items) => items.iter().any(|item| stoplist_matches(item, snapshot)),
+        Err(error) => {
+            eprintln!("Не удалось прочитать стоп-лист: {error}");
+            false
+        }
+    }
+}
+
+fn stoplist_matches(item: &StoplistItem, snapshot: &WindowSnapshot) -> bool {
+    let item_type = item.item_type.to_lowercase();
+    let value = item.value.to_lowercase();
+
+    match item_type.as_str() {
+        "app" => snapshot.app_name.to_lowercase() == value,
+        "site" => snapshot
+            .url
+            .as_ref()
+            .map(|url| url.to_lowercase().contains(&value))
+            .unwrap_or(false),
+        _ => false,
+    }
 }
 
 fn close_session(app: &AppHandle, session: Option<ActiveSession>) {

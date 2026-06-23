@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 
-import { flows, settingsRows, timeline } from "@/data/mock"
+import { settingsRows, timeline } from "@/data/mock"
 
 export type ActivityLogRecord = {
   id: number
@@ -46,6 +46,7 @@ export type TrackerStatusRecord = {
 }
 
 let browserTrackerRunning = false
+let browserStoplist: StoplistItemRecord[] | null = null
 
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
@@ -112,23 +113,31 @@ export async function setSetting(key: string, value: string) {
 
 export async function getStoplist() {
   if (!isTauriRuntime()) {
-    return flows.flatMap<StoplistItemRecord>((flow, flowIndex) =>
-      flow.streams.slice(0, 1).map((stream, streamIndex) => ({
-        id: flowIndex * 10 + streamIndex + 1,
-        item_type: "app",
-        value: stream.name,
-      })),
-    )
+    return getBrowserStoplist()
   }
 
   return invoke<StoplistItemRecord[]>("get_stoplist")
 }
 
 export async function addStoplistItem(input: NewStoplistItemRecord) {
+  if (!isTauriRuntime()) {
+    const nextItem = {
+      ...input,
+      id: Math.max(0, ...getBrowserStoplist().map((item) => item.id)) + 1,
+    }
+    browserStoplist = [...getBrowserStoplist(), nextItem]
+    return nextItem
+  }
+
   return invoke<StoplistItemRecord>("add_stoplist_item", { input })
 }
 
 export async function removeStoplistItem(id: number) {
+  if (!isTauriRuntime()) {
+    browserStoplist = getBrowserStoplist().filter((item) => item.id !== id)
+    return
+  }
+
   return invoke<void>("remove_stoplist_item", { id })
 }
 
@@ -173,6 +182,14 @@ function mockDateKey() {
   const month = String(today.getMonth() + 1).padStart(2, "0")
   const day = String(today.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+function getBrowserStoplist() {
+  if (!browserStoplist) {
+    browserStoplist = []
+  }
+
+  return browserStoplist
 }
 
 function mockEndTime(dateKey: string, start: string, index: number) {

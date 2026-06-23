@@ -136,6 +136,10 @@ impl Database {
             get_idle_log_by_id(connection, id)
         })
     }
+
+    pub fn list_stoplist(&self) -> Result<Vec<StoplistItem>, String> {
+        self.with_connection(read_stoplist)
+    }
 }
 
 #[tauri::command]
@@ -275,24 +279,7 @@ pub fn set_setting(
 
 #[tauri::command]
 pub fn get_stoplist(database: tauri::State<Database>) -> Result<Vec<StoplistItem>, String> {
-    database.with_connection(|connection| {
-        let mut statement = connection
-            .prepare("SELECT id, type, value FROM stoplist ORDER BY value ASC")
-            .map_err(|error| error.to_string())?;
-
-        let rows = statement
-            .query_map([], |row| {
-                Ok(StoplistItem {
-                    id: row.get(0)?,
-                    item_type: row.get(1)?,
-                    value: row.get(2)?,
-                })
-            })
-            .map_err(|error| error.to_string())?;
-
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())
-    })
+    database.list_stoplist()
 }
 
 #[tauri::command]
@@ -422,6 +409,25 @@ fn get_idle_log_by_id(connection: &Connection, id: i64) -> Result<IdleLog, Strin
                 })
             },
         )
+        .map_err(|error| error.to_string())
+}
+
+fn read_stoplist(connection: &Connection) -> Result<Vec<StoplistItem>, String> {
+    let mut statement = connection
+        .prepare("SELECT id, type, value FROM stoplist ORDER BY value ASC")
+        .map_err(|error| error.to_string())?;
+
+    let rows = statement
+        .query_map([], |row| {
+            Ok(StoplistItem {
+                id: row.get(0)?,
+                item_type: row.get(1)?,
+                value: row.get(2)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
         .map_err(|error| error.to_string())
 }
 
