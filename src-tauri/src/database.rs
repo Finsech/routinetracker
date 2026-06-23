@@ -408,6 +408,36 @@ pub fn save_llm_summary(
     })
 }
 
+#[tauri::command]
+pub fn get_llm_summaries(database: tauri::State<Database>) -> Result<Vec<LlmSummary>, String> {
+    database.with_connection(|connection| {
+        let mut statement = connection
+            .prepare(
+                "SELECT id, date_key, payload_signature, provider, model, groups_json, created_at
+                 FROM llm_summary
+                 ORDER BY created_at DESC",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let rows = statement
+            .query_map([], |row| {
+                Ok(LlmSummary {
+                    id: row.get(0)?,
+                    date_key: row.get(1)?,
+                    payload_signature: row.get(2)?,
+                    provider: row.get(3)?,
+                    model: row.get(4)?,
+                    groups_json: row.get(5)?,
+                    created_at: row.get(6)?,
+                })
+            })
+            .map_err(|error| error.to_string())?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())
+    })
+}
+
 fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()

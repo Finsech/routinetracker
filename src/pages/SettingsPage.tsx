@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react"
-import { Trash2 } from "lucide-react"
+import { Download, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { settingsRows } from "@/data/mock"
 import {
   addStoplistItem,
+  exportFocusFlowData,
   getSettings,
   getStoplist,
   removeStoplistItem,
@@ -38,6 +39,7 @@ export function SettingsPage() {
   const [newAppName, setNewAppName] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [savingLlm, setSavingLlm] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const visibleRows = rows.filter((row) => !llmSettingLabels.has(row.label))
 
   useEffect(() => {
@@ -128,6 +130,20 @@ export function SettingsPage() {
     setLlmSettings((current) => ({ ...current, ...input }))
   }
 
+  async function exportData() {
+    setExporting(true)
+
+    try {
+      const payload = await exportFocusFlowData()
+      downloadJsonFile(payload, `focusflow-export-${new Date().toISOString().slice(0, 10)}.json`)
+      setError(null)
+    } catch {
+      setError("Не удалось подготовить экспорт данных")
+    } finally {
+      setExporting(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {error && (
@@ -148,6 +164,19 @@ export function SettingsPage() {
               <span className="text-sm font-medium">{row.value}</span>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-md border border-zinc-200 bg-white">
+        <div className="flex items-center justify-between gap-4 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-semibold">Экспорт</h2>
+            <p className="text-xs text-zinc-500">Логи, простои, настройки, стоп-лист и LLM-сводки в одном JSON</p>
+          </div>
+          <Button disabled={exporting} onClick={() => void exportData()} type="button" variant="outline">
+            <Download className="size-4" data-icon="inline-start" />
+            {exporting ? "Готовлю" : "Скачать JSON"}
+          </Button>
         </div>
       </section>
 
@@ -253,4 +282,19 @@ function mapSetting(setting: SettingEntryRecord): SettingRow {
     label: settingLabels[setting.key] ?? setting.key,
     value: setting.value,
   }
+}
+
+function downloadJsonFile(payload: unknown, fileName: string) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+
+  link.href = url
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }

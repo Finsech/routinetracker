@@ -62,6 +62,19 @@ export type TrackerStatusRecord = {
   idle_seconds: number
 }
 
+export type FocusFlowExport = {
+  app_name: "FocusFlow"
+  schema_version: 1
+  exported_at: string
+  data: {
+    activity_logs: ActivityLogRecord[]
+    idle_logs: IdleLogRecord[]
+    settings: SettingEntryRecord[]
+    stoplist: StoplistItemRecord[]
+    llm_summaries: LlmSummaryRecord[]
+  }
+}
+
 let browserTrackerRunning = false
 let browserStoplist: StoplistItemRecord[] | null = null
 let browserIdleLogs: IdleLogRecord[] | null = null
@@ -213,6 +226,39 @@ export async function saveLlmSummary(input: SaveLlmSummaryInput) {
   }
 
   return invoke<LlmSummaryRecord>("save_llm_summary", { input })
+}
+
+export async function getLlmSummaries() {
+  if (!isTauriRuntime()) {
+    return [...browserLlmSummaries].sort((left, right) =>
+      right.created_at.localeCompare(left.created_at),
+    )
+  }
+
+  return invoke<LlmSummaryRecord[]>("get_llm_summaries")
+}
+
+export async function exportFocusFlowData(): Promise<FocusFlowExport> {
+  const [activityLogs, idleLogs, settings, stoplist, llmSummaries] = await Promise.all([
+    getActivityLogs(),
+    getIdleLogs(),
+    getSettings(),
+    getStoplist(),
+    getLlmSummaries(),
+  ])
+
+  return {
+    app_name: "FocusFlow",
+    schema_version: 1,
+    exported_at: new Date().toISOString(),
+    data: {
+      activity_logs: activityLogs,
+      idle_logs: idleLogs,
+      settings,
+      stoplist,
+      llm_summaries: llmSummaries,
+    },
+  }
 }
 
 export async function startTracking() {
