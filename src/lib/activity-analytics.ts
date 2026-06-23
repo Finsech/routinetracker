@@ -205,8 +205,7 @@ function buildYearHeatmap(
   const gridEnd = endOfWeekSaturday(endDate)
   const dailyMinutes = buildDailyMinuteMap(logs, idleLogs)
   const heatmap: HeatmapCell[] = []
-  const heatmapMonths: HeatmapMonthLabel[] = []
-  const seenMonths = new Set<string>()
+  const heatmapMonths = buildHeatmapMonthLabels(year, gridStart)
 
   let cursor = new Date(gridStart)
 
@@ -223,25 +222,22 @@ function buildYearHeatmap(
       weekIndex,
       weekday,
     })
-
-    const monthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`
-    if (
-      cursor >= startDate &&
-      cursor <= endDate &&
-      cursor.getDate() <= 7 &&
-      !seenMonths.has(monthKey)
-    ) {
-      heatmapMonths.push({
-        label: cursor.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
-        weekIndex,
-      })
-      seenMonths.add(monthKey)
-    }
-
     cursor.setDate(cursor.getDate() + 1)
   }
 
   return { heatmap, heatmapMonths }
+}
+
+function buildHeatmapMonthLabels(year: number, gridStart: Date): HeatmapMonthLabel[] {
+  return Array.from({ length: 12 }, (_, monthIndex) => {
+    const monthStart = new Date(year, monthIndex, 1)
+    monthStart.setHours(0, 0, 0, 0)
+
+    return {
+      label: monthStart.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
+      weekIndex: Math.floor(diffDays(gridStart, monthStart) / 7),
+    }
+  })
 }
 
 function buildDailyMinuteMap(logs: ActivityLogRecord[], idleLogs: IdleLogRecord[]) {
