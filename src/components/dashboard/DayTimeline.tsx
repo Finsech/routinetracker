@@ -11,6 +11,7 @@ type DayTimelineProps = {
 const START_HOUR = 9
 const END_HOUR = 22
 const DAY_MINUTES = (END_HOUR - START_HOUR) * 60
+const TIMELINE_HEIGHT = 820
 
 export function DayTimeline({
   items,
@@ -40,7 +41,7 @@ export function DayTimeline({
       <div className="mt-5 flex flex-wrap gap-2">
         {flows.map((flow) => (
           <div
-            className="inline-flex items-center gap-2 rounded-full border border-[#DDE9E0] bg-white/90 px-3 py-1.5 text-sm text-[#31483A]"
+            className="inline-flex items-center gap-2 rounded-full border border-[#DDE9E0] bg-white px-3 py-1.5 text-sm text-[#31483A]"
             key={flow.name}
           >
             <span className="size-2.5 rounded-full" style={{ backgroundColor: flow.accent }} />
@@ -50,7 +51,7 @@ export function DayTimeline({
       </div>
 
       <div className="mt-6 grid grid-cols-[88px_minmax(0,1fr)] gap-4">
-        <div className="relative h-[820px]">
+        <div className="relative" style={{ height: `${TIMELINE_HEIGHT}px` }}>
           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => {
             const hour = START_HOUR + index
             const top = (index / (END_HOUR - START_HOUR)) * 100
@@ -67,7 +68,10 @@ export function DayTimeline({
           })}
         </div>
 
-        <div className="relative h-[820px] overflow-hidden rounded-[24px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]">
+        <div
+          className="relative overflow-hidden rounded-[24px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]"
+          style={{ height: `${TIMELINE_HEIGHT}px` }}
+        >
           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => (
             <div
               className="absolute inset-x-0 border-t border-[#EDE8E0]"
@@ -86,11 +90,12 @@ export function DayTimeline({
             {visibleItems.map((item, index) => {
               const start = Math.max(item.startMinutes, START_HOUR * 60) - START_HOUR * 60
               const end = Math.min(item.endMinutes, END_HOUR * 60) - START_HOUR * 60
-              const top = (start / DAY_MINUTES) * 100
-              const height = Math.max(((end - start) / DAY_MINUTES) * 100, 4.6)
+              const topPx = (start / DAY_MINUTES) * TIMELINE_HEIGHT
+              const actualHeightPx = ((end - start) / DAY_MINUTES) * TIMELINE_HEIGHT
+              const compact = item.durationMinutes <= 60
+              const heightPx = Math.max(actualHeightPx, compact ? 38 : 52)
               const itemId = buildTimelineId(item, index)
               const selected = selectedItemId === itemId
-              const compact = item.durationMinutes < 50
               const backgroundColor = item.kind === "idle" ? "#FFF6EA" : tint(item.accent, 0.14)
 
               return (
@@ -102,9 +107,8 @@ export function DayTimeline({
                   onClick={() => onItemSelect?.(item)}
                   style={{
                     backgroundColor,
-                    top: `${top}%`,
-                    minHeight: compact ? "52px" : "74px",
-                    height: `${height}%`,
+                    top: `${topPx}px`,
+                    height: `${heightPx}px`,
                     zIndex: selected ? 20 : index + 1,
                   }}
                   type="button"
@@ -158,12 +162,13 @@ function formatUrl(value: string) {
 
 function tint(hex: string, alpha: number) {
   const normalized = hex.replace("#", "")
-  const value = normalized.length === 3
-    ? normalized
-        .split("")
-        .map((char) => `${char}${char}`)
-        .join("")
-    : normalized
+  const value =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : normalized
   const red = parseInt(value.slice(0, 2), 16)
   const green = parseInt(value.slice(2, 4), 16)
   const blue = parseInt(value.slice(4, 6), 16)

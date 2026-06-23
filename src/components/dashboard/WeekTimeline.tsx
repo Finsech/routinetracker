@@ -8,6 +8,7 @@ type WeekTimelineProps = {
 const START_HOUR = 9
 const END_HOUR = 22
 const DAY_MINUTES = (END_HOUR - START_HOUR) * 60
+const TIMELINE_HEIGHT = 820
 
 export function WeekTimeline({ days }: WeekTimelineProps) {
   return (
@@ -16,8 +17,7 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
         <div>
           <p className="font-['Georgia'] text-[2rem] leading-none text-[#24382F]">Неделя</p>
           <p className="mt-2 text-sm text-[#708178]">
-            Реальная недельная сетка по интервалам активности, без повторения дневной суммы в
-            каждой ячейке.
+            Реальная недельная сетка по интервалам активности, без повторения дневной суммы в каждой ячейке.
           </p>
         </div>
       </div>
@@ -28,10 +28,13 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
           <div className="text-center" key={day.dateKey}>
             <p className="text-sm font-medium text-[#32483C]">{day.shortLabel}</p>
             <p className="mt-1 text-xs text-[#7A8B81]">{day.dayNumber}</p>
+            <div className="mt-2 rounded-full border border-[#E3ECE5] bg-white px-3 py-1 text-[11px] text-[#62756A] shadow-sm">
+              {formatMinutes(day.totalMinutes)}
+            </div>
           </div>
         ))}
 
-        <div className="relative">
+        <div className="relative" style={{ height: `${TIMELINE_HEIGHT}px` }}>
           {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => {
             const hour = START_HOUR + index
             const top = (index / (END_HOUR - START_HOUR)) * 100
@@ -50,8 +53,9 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
 
         {days.map((day) => (
           <div
-            className="relative h-[820px] overflow-hidden rounded-[22px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]"
+            className="relative overflow-hidden rounded-[22px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]"
             key={day.dateKey}
+            style={{ height: `${TIMELINE_HEIGHT}px` }}
           >
             {Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, index) => (
               <div
@@ -61,19 +65,14 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
               />
             ))}
 
-            <div className="absolute inset-x-0 top-0 px-2 py-2">
-              <div className="rounded-full bg-white/82 px-3 py-1 text-center text-xs text-[#62756A] shadow-sm">
-                {formatMinutes(day.totalMinutes)}
-              </div>
-            </div>
-
-            <div className="relative h-full px-2 pb-2 pt-12">
+            <div className="relative h-full px-2 py-2">
               {day.items.map((item, index) => {
                 const start = Math.max(item.startMinutes, START_HOUR * 60) - START_HOUR * 60
                 const end = Math.min(item.endMinutes, END_HOUR * 60) - START_HOUR * 60
-                const top = (start / DAY_MINUTES) * 100
-                const height = Math.max(((end - start) / DAY_MINUTES) * 100, 2.8)
-                const compact = item.durationMinutes < 40
+                const topPx = (start / DAY_MINUTES) * TIMELINE_HEIGHT
+                const actualHeightPx = ((end - start) / DAY_MINUTES) * TIMELINE_HEIGHT
+                const compact = item.durationMinutes <= 45
+                const heightPx = Math.max(actualHeightPx, compact ? 24 : 38)
                 const backgroundColor = item.kind === "idle" ? "#FFF6EA" : tint(item.accent, 0.16)
 
                 return (
@@ -82,9 +81,8 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
                     key={`${day.dateKey}-${item.startMinutes}-${index}`}
                     style={{
                       backgroundColor,
-                      top: `${top}%`,
-                      minHeight: compact ? "30px" : "48px",
-                      height: `${height}%`,
+                      top: `${topPx}px`,
+                      height: `${heightPx}px`,
                       zIndex: index + 1,
                     }}
                   >
@@ -113,12 +111,13 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
 
 function tint(hex: string, alpha: number) {
   const normalized = hex.replace("#", "")
-  const value = normalized.length === 3
-    ? normalized
-        .split("")
-        .map((char) => `${char}${char}`)
-        .join("")
-    : normalized
+  const value =
+    normalized.length === 3
+      ? normalized
+          .split("")
+          .map((char) => `${char}${char}`)
+          .join("")
+      : normalized
   const red = parseInt(value.slice(0, 2), 16)
   const green = parseInt(value.slice(2, 4), 16)
   const blue = parseInt(value.slice(4, 6), 16)

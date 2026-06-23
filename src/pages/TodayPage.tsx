@@ -237,31 +237,6 @@ export function TodayPage() {
           </div>
         )}
 
-        <section className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_left_bottom,rgba(175,220,188,0.22),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(255,252,247,0.9)_100%)] px-6 py-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="max-w-[540px]">
-              <p className="font-['Georgia'] text-[2rem] leading-none text-[#24382F]">
-                День на экране
-              </p>
-              <p className="mt-3 text-sm leading-6 text-[#6C7E74]">
-                Главный экран теперь собирает таймлайн, потоки и нейрогруппировку в одном месте,
-                без технического шума.
-              </p>
-            </div>
-          </div>
-          {(llmCachedAt || llmError || loading) && (
-            <p className="mt-4 text-sm text-[#73867A]">
-              {llmError
-                ? llmError
-                : loading
-                  ? "Загружаю реальные интервалы активности."
-                  : llmCachedAt
-                    ? `Показана последняя сохраненная группировка от ${formatCacheTime(llmCachedAt)}.`
-                    : "Когда появятся записи, здесь можно будет собрать потоки дня."}
-            </p>
-          )}
-        </section>
-
         <DayTimeline
           flows={flows}
           items={summary.timeline}
@@ -272,7 +247,6 @@ export function TodayPage() {
           selectedItemId={selectedTimelineId}
           totalTime={summary.activeTime}
         />
-
       </div>
 
       <aside className="space-y-5">
@@ -288,6 +262,17 @@ export function TodayPage() {
                 <InsightMetric label="Активно" value={summary.activeTime} />
                 <InsightMetric label="Простой" value={summary.idleTime} />
               </div>
+              {(llmCachedAt || llmError || loading) && (
+                <p className="mt-5 text-sm text-[#73867A]">
+                  {llmError
+                    ? llmError
+                    : loading
+                      ? "Загружаю реальные интервалы активности."
+                      : llmCachedAt
+                        ? `Показана последняя сохраненная группировка от ${formatCacheTime(llmCachedAt)}.`
+                        : "Когда появятся записи, здесь можно будет собрать потоки дня."}
+                </p>
+              )}
             </>
           ) : selectedTimelineItem ? (
             <TimelineInspector item={selectedTimelineItem} onReset={() => setSelectedTimelineItem(null)} />
