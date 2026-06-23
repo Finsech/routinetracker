@@ -26,6 +26,7 @@ pub struct IdleLog {
     pub end_time: String,
     pub note: Option<String>,
     pub ignored: bool,
+    pub reviewed: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +44,13 @@ pub struct NewIdleLog {
     pub end_time: String,
     pub note: Option<String>,
     pub ignored: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateIdleLog {
+    pub note: Option<String>,
+    pub ignored: bool,
+    pub reviewed: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -172,7 +180,7 @@ pub fn get_idle_logs(database: tauri::State<Database>) -> Result<Vec<IdleLog>, S
     database.with_connection(|connection| {
         let mut statement = connection
             .prepare(
-                "SELECT id, start_time, end_time, note, ignored
+                "SELECT id, start_time, end_time, note, ignored, reviewed
                  FROM idle_log
                  ORDER BY start_time DESC",
             )
@@ -186,6 +194,7 @@ pub fn get_idle_logs(database: tauri::State<Database>) -> Result<Vec<IdleLog>, S
                     end_time: row.get(2)?,
                     note: row.get(3)?,
                     ignored: row.get(4)?,
+                    reviewed: row.get(5)?,
                 })
             })
             .map_err(|error| error.to_string())?;
@@ -201,6 +210,26 @@ pub fn create_idle_log(
     input: NewIdleLog,
 ) -> Result<IdleLog, String> {
     database.insert_idle_log(input)
+}
+
+#[tauri::command]
+pub fn update_idle_log(
+    database: tauri::State<Database>,
+    id: i64,
+    input: UpdateIdleLog,
+) -> Result<IdleLog, String> {
+    database.with_connection(|connection| {
+        connection
+            .execute(
+                "UPDATE idle_log
+                 SET note = ?1, ignored = ?2, reviewed = ?3
+                 WHERE id = ?4",
+                params![input.note, input.ignored, input.reviewed, id],
+            )
+            .map_err(|error| error.to_string())?;
+
+        get_idle_log_by_id(connection, id)
+    })
 }
 
 #[tauri::command]
@@ -325,7 +354,8 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 start_time DATETIME NOT NULL,
                 end_time DATETIME NOT NULL,
                 note TEXT,
-                ignored INTEGER NOT NULL DEFAULT 0
+                ignored INTEGER NOT NULL DEFAULT 0,
+                reviewed INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS stoplist (
@@ -343,7 +373,14 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 ('export_format', 'JSON');
             ",
         )
-        .map_err(|error| format!("Не удалось применить миграции SQLite: {error}"))
+        .map_err(|error| format!("Не удалось применить миграции SQLite: {error}"))?;
+
+    ensure_column(
+        connection,
+        "idle_log",
+        "reviewed",
+        "ALTER TABLE idle_log ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0",
+    )
 }
 
 fn get_activity_log_by_id(connection: &Connection, id: i64) -> Result<ActivityLog, String> {
@@ -370,7 +407,7 @@ fn get_activity_log_by_id(connection: &Connection, id: i64) -> Result<ActivityLo
 fn get_idle_log_by_id(connection: &Connection, id: i64) -> Result<IdleLog, String> {
     connection
         .query_row(
-            "SELECT id, start_time, end_time, note, ignored
+            "SELECT id, start_time, end_time, note, ignored, reviewed
              FROM idle_log
              WHERE id = ?1",
             params![id],
@@ -381,10 +418,37 @@ fn get_idle_log_by_id(connection: &Connection, id: i64) -> Result<IdleLog, Strin
                     end_time: row.get(2)?,
                     note: row.get(3)?,
                     ignored: row.get(4)?,
+                    reviewed: row.get(5)?,
                 })
             },
         )
         .map_err(|error| error.to_string())
+}
+
+fn ensure_column(
+    connection: &Connection,
+    table: &str,
+    column: &str,
+    alter_sql: &str,
+) -> Result<(), String> {
+    let mut statement = connection
+        .prepare(&format!("PRAGMA table_info({table})"))
+        .map_err(|error| error.to_string())?;
+    let columns = statement
+        .query_map([], |row| row.get::<_, String>(1))
+        .map_err(|error| error.to_string())?;
+
+    for existing_column in columns {
+        if existing_column.map_err(|error| error.to_string())? == column {
+            return Ok(());
+        }
+    }
+
+    connection
+        .execute(alter_sql, [])
+        .map_err(|error| error.to_string())?;
+
+    Ok(())
 }
 
 fn get_stoplist_item_by_id(connection: &Connection, id: i64) -> Result<StoplistItem, String> {

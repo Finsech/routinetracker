@@ -27,6 +27,7 @@ pub fn run() {
             database::create_activity_log,
             database::get_idle_logs,
             database::create_idle_log,
+            database::update_idle_log,
             database::get_settings,
             database::set_setting,
             database::get_stoplist,

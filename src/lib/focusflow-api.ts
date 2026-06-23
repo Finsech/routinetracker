@@ -19,9 +19,11 @@ export type IdleLogRecord = {
   end_time: string
   note: string | null
   ignored: boolean
+  reviewed: boolean
 }
 
-export type NewIdleLogRecord = Omit<IdleLogRecord, "id">
+export type NewIdleLogRecord = Omit<IdleLogRecord, "id" | "reviewed">
+export type UpdateIdleLogRecord = Pick<IdleLogRecord, "note" | "ignored" | "reviewed">
 
 export type SettingEntryRecord = {
   key: string
@@ -77,6 +79,7 @@ export async function getIdleLogs() {
         end_time: `${dateKey}T12:30:00`,
         note: null,
         ignored: false,
+        reviewed: false,
       },
     ]
   }
@@ -86,6 +89,10 @@ export async function getIdleLogs() {
 
 export async function createIdleLog(input: NewIdleLogRecord) {
   return invoke<IdleLogRecord>("create_idle_log", { input })
+}
+
+export async function updateIdleLog(id: number, input: UpdateIdleLogRecord) {
+  return invoke<IdleLogRecord>("update_idle_log", { id, input })
 }
 
 export async function getSettings() {
