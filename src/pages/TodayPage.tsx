@@ -3,6 +3,7 @@ import { X } from "lucide-react"
 
 import { DayTimeline } from "@/components/dashboard/DayTimeline"
 import { FlowCard } from "@/components/dashboard/FlowCard"
+import { LlmPrepCard } from "@/components/dashboard/LlmPrepCard"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { Button } from "@/components/ui/button"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
@@ -13,6 +14,7 @@ import {
   type ActivityLogRecord,
   type IdleLogRecord,
 } from "@/lib/focusflow-api"
+import { buildLlmSummaryPayload } from "@/lib/llm-summary"
 
 export function TodayPage() {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
@@ -29,6 +31,7 @@ export function TodayPage() {
       ) ?? null,
     [idleLogs, postponedIdleIds],
   )
+  const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs), [idleLogs, logs])
 
   useEffect(() => {
     let active = true
@@ -115,6 +118,8 @@ export function TodayPage() {
           <MetricCard label="Активно" value={summary.activeTime} />
           <MetricCard label="Простой" value={summary.idleTime} />
         </div>
+
+        <LlmPrepCard payload={llmPayload} />
 
         {summary.flows.length === 0 && (
           <div className="rounded-md border border-dashed border-zinc-200 bg-white px-4 py-8 text-center">

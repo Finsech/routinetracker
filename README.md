@@ -58,6 +58,8 @@ npm run tauri dev
 
 Экран настроек умеет управлять stoplist-приложениями. Процессы из stoplist не записываются в активные интервалы.
 
+На главном экране есть блок `LLM-подготовка`: он собирает активности и idle-интервалы текущего дня в JSON payload для будущего подключения LLM-провайдера.
+
 Основная frontend-структура:
 
 - `src/pages/` - экраны приложения.
@@ -65,5 +67,6 @@ npm run tauri dev
 - `src/components/dashboard/` - виджеты метрик, таймлайнов, потоков и heatmap.
 - `src/data/mock.ts` - мок-данные для browser preview и будущих UI-сценариев.
 - `src/lib/activity-analytics.ts` - frontend-агрегация activity log для экранов сегодня и истории.
+- `src/lib/llm-summary.ts` - подготовка JSON payload для будущей LLM-группировки.
 - `src/lib/focusflow-api.ts` - frontend API-клиент для Tauri-команд и browser fallback.
 - `src/types.ts` - общие frontend-типы.
