@@ -3,6 +3,11 @@ import type { FlowSummary, TimelineItem, WeekActivity } from "@/types"
 
 const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
 const RAW_FLOW_NAME = "Сырые активности"
+const IDLE_FLOW_NAME = "Простой"
+const FLOW_ACCENTS: Record<string, string> = {
+  [RAW_FLOW_NAME]: "#6EA88F",
+  [IDLE_FLOW_NAME]: "#D9A66C",
+}
 
 type TimeRangeRecord = {
   start_time: string
@@ -44,7 +49,7 @@ export function buildTodaySummary(
     timeline: [
       ...todayLogs.map(toTimelineItem),
       ...todayIdleLogs.map(toIdleTimelineItem),
-    ].sort((left, right) => clockSortValue(left.start) - clockSortValue(right.start)),
+    ].sort((left, right) => left.startMinutes - right.startMinutes),
     flows: buildAppFlows(todayLogs),
     focusPercent: trackedMinutes > 0 ? `${Math.round((totalMinutes / trackedMinutes) * 100)}%` : "0%",
     activeTime: formatMinutes(totalMinutes),
@@ -129,7 +134,7 @@ function buildAppFlows(logs: ActivityLogRecord[]): FlowSummary[] {
     {
       name: RAW_FLOW_NAME,
       time: formatMinutes(logs.reduce((sum, log) => sum + durationMinutes(log), 0)),
-      accent: "#22C55E",
+      accent: FLOW_ACCENTS[RAW_FLOW_NAME],
       streams,
     },
   ]
@@ -140,10 +145,16 @@ function toTimelineItem(log: ActivityLogRecord): TimelineItem {
 
   return {
     start: formatClock(log.start_time),
+    end: formatClock(log.end_time),
     label: log.window_title || log.url || log.app_name,
     app: log.app_name,
     flow: RAW_FLOW_NAME,
-    size: heightClass(minutes),
+    accent: FLOW_ACCENTS[RAW_FLOW_NAME],
+    durationMinutes: minutes,
+    startMinutes: minutesSinceMidnight(log.start_time),
+    endMinutes: minutesSinceMidnight(log.end_time),
+    kind: "activity",
+    url: log.url,
   }
 }
 
@@ -152,10 +163,16 @@ function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
 
   return {
     start: formatClock(log.start_time),
-    label: log.note || "Простой",
+    end: formatClock(log.end_time),
+    label: log.note || IDLE_FLOW_NAME,
     app: "Idle",
-    flow: "Уточнить",
-    size: heightClass(minutes),
+    flow: IDLE_FLOW_NAME,
+    accent: FLOW_ACCENTS[IDLE_FLOW_NAME],
+    durationMinutes: minutes,
+    startMinutes: minutesSinceMidnight(log.start_time),
+    endMinutes: minutesSinceMidnight(log.end_time),
+    kind: "idle",
+    url: null,
   }
 }
 
@@ -182,11 +199,6 @@ function durationMinutes(log: TimeRangeRecord) {
   return (end - start) / 60_000
 }
 
-function clockSortValue(value: string) {
-  const [hours = "0", minutes = "0"] = value.split(":")
-  return Number(hours) * 60 + Number(minutes)
-}
-
 function timeValue(value: string) {
   return new Date(value).getTime()
 }
@@ -198,12 +210,9 @@ function formatClock(value: string) {
   }).format(new Date(value))
 }
 
-function heightClass(minutes: number) {
-  if (minutes >= 90) return "h-28"
-  if (minutes >= 60) return "h-24"
-  if (minutes >= 30) return "h-20"
-  if (minutes >= 15) return "h-16"
-  return "h-12"
+function minutesSinceMidnight(value: string) {
+  const date = new Date(value)
+  return date.getHours() * 60 + date.getMinutes()
 }
 
 function buildLastSevenDays(date: Date) {

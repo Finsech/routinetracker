@@ -1,22 +1,17 @@
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import {
-  AppWindow,
-  Brain,
+  BarChart3,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  History,
-  Monitor,
-  MousePointer2,
+  LayoutList,
   Play,
   Settings,
-  ShieldCheck,
   Square,
   TimerReset,
 } from "lucide-react"
 
-import { StatusLine } from "@/components/app/StatusLine"
 import { Button } from "@/components/ui/button"
 import {
   getTrackingStatus,
@@ -34,14 +29,16 @@ const initialTrackerStatus: TrackerStatusRecord = {
 }
 
 const navItems: NavItem[] = [
-  { id: "today", label: "Сегодня", icon: CalendarDays },
-  { id: "history", label: "История", icon: History },
+  { id: "today", label: "Сегодня", icon: LayoutList },
+  { id: "week", label: "Неделя", icon: CalendarDays },
+  { id: "analytics", label: "Аналитика", icon: BarChart3 },
   { id: "settings", label: "Настройки", icon: Settings },
 ]
 
 const viewTitles: Record<View, string> = {
-  today: "Дневной обзор",
-  history: "История активности",
+  today: "Сегодня",
+  week: "Неделя",
+  analytics: "Аналитика",
   settings: "Настройки",
 }
 
@@ -56,6 +53,8 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
   const [trackerBusy, setTrackerBusy] = useState(false)
   const trackerRunning = trackerStatus.running
   const headerDate = formatHeaderDate(new Date())
+  const idleState = formatIdleTime(trackerStatus.idle_seconds)
+  const currentActivity = formatCurrentActivity(trackerStatus)
 
   useEffect(() => {
     let active = true
@@ -99,101 +98,91 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
     }
   }
 
-  const currentActivity = formatCurrentActivity(trackerStatus)
-  const idleTime = formatIdleTime(trackerStatus.idle_seconds)
-
   return (
-    <main className="min-h-screen bg-[#F7F8F5] text-zinc-950">
-      <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-zinc-200 bg-white px-4 py-5 lg:block">
-          <div className="flex items-center gap-3 px-2">
-            <div className="flex size-9 items-center justify-center rounded-md bg-[#22C55E] text-white">
-              <TimerReset className="size-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">FocusFlow</p>
-              <p className="text-xs text-zinc-500">локальный трекер времени</p>
+    <main className="min-h-screen bg-[radial-gradient(circle_at_left_bottom,rgba(170,220,187,0.38),transparent_24%),radial-gradient(circle_at_top_right,rgba(255,244,228,0.55),transparent_28%),linear-gradient(180deg,#FFF9F1_0%,#F5FAF5_100%)] text-[#1F2F27]">
+      <div className="flex min-h-screen gap-5 px-4 py-4 sm:px-5 lg:px-6">
+        <aside className="hidden w-[92px] shrink-0 rounded-[30px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,248,238,0.95)_0%,rgba(215,240,223,0.88)_100%)] px-3 py-5 shadow-[0_20px_70px_rgba(91,121,108,0.1)] lg:flex lg:flex-col">
+          <div className="flex justify-center">
+            <div className="flex size-12 items-center justify-center rounded-full border border-[#DDE8DE] bg-[#FFFDF8] shadow-[0_12px_26px_rgba(191,171,132,0.18)]">
+              <div className="flex size-9 items-center justify-center rounded-full bg-[linear-gradient(180deg,#87D39F_0%,#65B584_100%)] text-white">
+                <TimerReset className="size-4" />
+              </div>
             </div>
           </div>
 
-          <nav className="mt-8 space-y-1">
+          <nav className="mt-10 flex flex-1 flex-col items-center gap-3">
             {navItems.map((item) => {
               const Icon = item.icon
               const active = activeView === item.id
 
               return (
                 <button
-                  className={`flex h-9 w-full items-center gap-2 rounded-md px-3 text-sm transition ${
+                  className={`group flex w-full flex-col items-center gap-2 rounded-[22px] px-2 py-3 text-xs transition ${
                     active
-                      ? "bg-zinc-950 text-white"
-                      : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-950"
+                      ? "bg-white/92 text-[#2E493B] shadow-[0_12px_28px_rgba(91,121,108,0.12)]"
+                      : "text-[#74867B] hover:bg-white/60 hover:text-[#2E493B]"
                   }`}
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
                   type="button"
                 >
-                  <Icon className="size-4" />
-                  {item.label}
+                  <Icon className={`size-4 ${active ? "text-[#5FA57A]" : "text-[#86978D]"}`} />
+                  <span>{item.label}</span>
                 </button>
               )
             })}
           </nav>
-
-          <div className="mt-8 border-t border-zinc-200 pt-5">
-            <p className="text-xs uppercase tracking-wide text-zinc-500">Статус</p>
-            <div className="mt-3 space-y-3 text-sm">
-              <StatusLine
-                icon={Monitor}
-                label="Трекинг"
-                value={trackerRunning ? "включен" : "выключен"}
-              />
-              <StatusLine icon={AppWindow} label="Сейчас" value={currentActivity} />
-              <StatusLine icon={MousePointer2} label="Idle" value={idleTime} />
-              <StatusLine icon={Brain} label="LLM" value="мок-данные" />
-              <StatusLine icon={ShieldCheck} label="Приватность" value="локально" />
-            </div>
-            <Button
-              className="mt-4 w-full"
-              disabled={trackerBusy}
-              onClick={toggleTracking}
-              size="sm"
-              variant={trackerRunning ? "outline" : "default"}
-            >
-              {trackerRunning ? <Square className="size-4" /> : <Play className="size-4" />}
-              {trackerRunning ? "Остановить" : "Запустить"}
-            </Button>
-          </div>
         </aside>
 
-        <section className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 items-center justify-between border-b border-zinc-200 bg-white px-4 sm:px-6">
+        <section className="flex min-w-0 flex-1 flex-col rounded-[34px] border border-white/70 bg-[linear-gradient(180deg,rgba(255,252,247,0.96)_0%,rgba(255,255,255,0.92)_100%)] shadow-[0_20px_80px_rgba(91,121,108,0.1)] backdrop-blur">
+          <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[#ECE9E0] px-5 py-5 sm:px-6">
             <div>
-              <h1 className="text-base font-semibold sm:text-lg">{viewTitles[activeView]}</h1>
-              <p className="hidden text-sm text-zinc-500 sm:block">{headerDate}</p>
+              <p className="font-['Georgia'] text-[2.1rem] leading-none text-[#22372C]">
+                {viewTitles[activeView]}
+              </p>
+              <p className="mt-2 text-sm text-[#6E8076]">{headerDate}</p>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Button size="icon" variant="outline" aria-label="Предыдущий день">
-                <ChevronLeft className="size-4" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="hidden rounded-full border border-[#E4ECE6] bg-white/80 px-4 py-2 text-sm text-[#6A7C72] xl:block">
+                {currentActivity}
+              </div>
+              <div className="rounded-full border border-[#E1E8E2] bg-white/82 px-3 py-2 text-sm text-[#63756A]">
+                {idleState}
+              </div>
+              <Button
+                className="rounded-full px-4"
+                disabled={trackerBusy}
+                onClick={toggleTracking}
+                size="lg"
+                variant={trackerRunning ? "outline" : "default"}
+              >
+                {trackerRunning ? <Square className="size-4" /> : <Play className="size-4" />}
+                {trackerRunning ? "Пауза" : "Старт"}
               </Button>
-              <Button variant="outline">
-                <CalendarDays className="size-4" />
-                Сегодня
-              </Button>
-              <Button size="icon" variant="outline" aria-label="Следующий день">
-                <ChevronRight className="size-4" />
-              </Button>
+              <div className="flex items-center gap-2 rounded-full border border-[#E5ECE6] bg-white/82 px-2 py-2">
+                <Button aria-label="Предыдущий день" size="icon-sm" variant="ghost">
+                  <ChevronLeft className="size-4" />
+                </Button>
+                <Button className="rounded-full px-4" size="sm" variant="outline">
+                  <CalendarDays className="size-4" />
+                  Сегодня
+                </Button>
+                <Button aria-label="Следующий день" size="icon-sm" variant="ghost">
+                  <ChevronRight className="size-4" />
+                </Button>
+              </div>
             </div>
           </header>
 
-          <div className="flex gap-1 overflow-x-auto border-b border-zinc-200 bg-white px-4 py-2 lg:hidden">
+          <div className="flex gap-2 overflow-x-auto border-b border-[#ECE9E0] px-4 py-3 lg:hidden">
             {navItems.map((item) => {
               const Icon = item.icon
               return (
                 <Button
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
-                  variant={activeView === item.id ? "default" : "ghost"}
+                  variant={activeView === item.id ? "default" : "outline"}
                 >
                   <Icon className="size-4" />
                   {item.label}
@@ -202,7 +191,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
             })}
           </div>
 
-          <div className="flex-1 overflow-auto p-4 sm:p-6">{children}</div>
+          <div className="flex-1 overflow-auto px-4 py-4 sm:px-6 sm:py-5">{children}</div>
         </section>
       </div>
     </main>
@@ -211,7 +200,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
 
 function formatCurrentActivity(status: TrackerStatusRecord) {
   if (!status.current_app) {
-    return "нет сессии"
+    return "Трекер ждет активную сессию"
   }
 
   if (!status.current_window_title) {
@@ -219,22 +208,25 @@ function formatCurrentActivity(status: TrackerStatusRecord) {
   }
 
   const title =
-    status.current_window_title.length > 32
-      ? `${status.current_window_title.slice(0, 32)}...`
+    status.current_window_title.length > 36
+      ? `${status.current_window_title.slice(0, 36)}...`
       : status.current_window_title
 
   return `${status.current_app}: ${title}`
 }
 
 function formatIdleTime(seconds: number) {
+  if (seconds <= 0) {
+    return "Без простоя"
+  }
+
   if (seconds < 60) {
-    return `${seconds} с`
+    return `Простой ${seconds} с`
   }
 
   const minutes = Math.floor(seconds / 60)
   const restSeconds = seconds % 60
-
-  return `${minutes} мин ${restSeconds} с`
+  return `Простой ${minutes} мин ${restSeconds} с`
 }
 
 function formatHeaderDate(date: Date) {

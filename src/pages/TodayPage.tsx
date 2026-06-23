@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from "react"
-import { X } from "lucide-react"
+import { ArrowRight, Sparkles, X } from "lucide-react"
 
 import { DayTimeline } from "@/components/dashboard/DayTimeline"
-import { FlowCard } from "@/components/dashboard/FlowCard"
-import { LlmPrepCard } from "@/components/dashboard/LlmPrepCard"
-import { MetricCard } from "@/components/dashboard/MetricCard"
+import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { Button } from "@/components/ui/button"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
 import {
@@ -19,8 +17,8 @@ import {
 } from "@/lib/focusflow-api"
 import {
   DEFAULT_LLM_SETTINGS,
-  buildLlmCacheSignature,
   buildFlowsFromLlmGroups,
+  buildLlmCacheSignature,
   buildLlmSummaryPayload,
   parseStoredLlmGroups,
   readLlmSettings,
@@ -28,7 +26,7 @@ import {
   serializeLlmGroups,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
-import type { FlowStream, FlowSummary } from "@/types"
+import type { FlowStream, FlowSummary, TimelineItem } from "@/types"
 
 type SelectedStream = {
   flow: FlowSummary
@@ -48,6 +46,7 @@ export function TodayPage() {
   const [llmError, setLlmError] = useState<string | null>(null)
   const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
+  const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
   const pendingIdleLog = useMemo(
     () =>
@@ -148,7 +147,7 @@ export function TodayPage() {
         setLlmCachedAt(cachedSummary.created_at)
       } catch {
         if (active) {
-          setLlmError("Не удалось загрузить сохраненную LLM-группировку")
+          setLlmError("Не удалось загрузить сохраненную группировку дня")
         }
       }
     }
@@ -166,7 +165,8 @@ export function TodayPage() {
 
     try {
       const groups = await requestOllamaSummary(llmPayload, llmSettings)
-      setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
+      const nextFlows = buildFlowsFromLlmGroups(llmPayload, groups)
+      setLlmFlows(nextFlows)
 
       try {
         const savedSummary = await saveLlmSummary({
@@ -178,11 +178,12 @@ export function TodayPage() {
         })
         setLlmCachedAt(savedSummary.created_at)
       } catch {
-        setLlmError("Группировка получена, но не сохранена в SQLite")
+        setLlmError("Группировка получена, но не сохранилась в локальную базу")
       }
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ Ollama"
-      setLlmError(`Ollama недоступна или модель не готова: ${message}`)
+      const message =
+        caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ локальной модели"
+      setLlmError(`Группировка дня пока не сработала: ${message}`)
     } finally {
       setLlmLoading(false)
     }
@@ -221,53 +222,139 @@ export function TodayPage() {
     setIdleNote("")
   }
 
-  return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px]">
-      <DayTimeline
-        description={loading ? "Загружаю активности" : "Реальные интервалы из локальной базы"}
-        items={summary.timeline}
-        totalTime={summary.activeTime}
-      />
+  const selectedTimelineId = selectedTimelineItem
+    ? `${selectedTimelineItem.startMinutes}-${selectedTimelineItem.endMinutes}-${selectedTimelineItem.label}-${summary.timeline.findIndex((item) => item === selectedTimelineItem)}`
+    : null
 
-      <section className="space-y-4">
+  const donutSegments = buildDonutSegments(flows)
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="space-y-5">
         {error && (
-          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
             {error}
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <MetricCard label="Фокус" value={summary.focusPercent} />
-          <MetricCard label="Активно" value={summary.activeTime} />
-          <MetricCard label="Простой" value={summary.idleTime} />
-        </div>
+        <section className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_left_bottom,rgba(175,220,188,0.22),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(255,252,247,0.9)_100%)] px-6 py-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="max-w-[540px]">
+              <p className="font-['Georgia'] text-[2rem] leading-none text-[#24382F]">
+                День на экране
+              </p>
+              <p className="mt-3 text-sm leading-6 text-[#6C7E74]">
+                Главный экран теперь собирает таймлайн, потоки и нейрогруппировку в одном месте,
+                без технического шума.
+              </p>
+            </div>
+            <Button
+              className="rounded-full px-4"
+              disabled={llmLoading || llmPayload.items.length === 0}
+              onClick={() => void generateLlmSummary()}
+              size="lg"
+              type="button"
+            >
+              <Sparkles className="size-4" />
+              {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
+            </Button>
+          </div>
+          {(llmCachedAt || llmError || loading) && (
+            <p className="mt-4 text-sm text-[#73867A]">
+              {llmError
+                ? llmError
+                : loading
+                  ? "Загружаю реальные интервалы активности."
+                  : llmCachedAt
+                    ? `Показана последняя сохраненная группировка от ${formatCacheTime(llmCachedAt)}.`
+                    : "Когда появятся записи, здесь можно будет собрать потоки дня."}
+            </p>
+          )}
+        </section>
 
-        <LlmPrepCard
-          cachedAt={llmCachedAt}
-          error={llmError}
-          loading={llmLoading}
-          onGenerate={() => void generateLlmSummary()}
-          payload={llmPayload}
-          settings={llmSettings}
+        <DayTimeline
+          flows={flows}
+          items={summary.timeline}
+          onItemSelect={(item) => {
+            setSelectedTimelineItem(item)
+            setSelectedStream(null)
+          }}
+          selectedItemId={selectedTimelineId}
+          totalTime={summary.activeTime}
         />
 
-        {flows.length === 0 && (
-          <div className="rounded-md border border-dashed border-zinc-200 bg-white px-4 py-8 text-center">
-            <p className="text-sm font-medium">Потоки появятся после первых записей</p>
-            <p className="mt-1 text-xs text-zinc-500">
-              Сначала трекер соберет реальные активности, затем их можно сгруппировать через LLM.
-            </p>
-          </div>
-        )}
+        {flows.length > 0 && (
+          <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">Потоки и стримы</p>
+                <p className="mt-2 text-sm text-[#71837A]">
+                  Клик по стриму открывает состав активности в правой панели.
+                </p>
+              </div>
+            </div>
 
-        {flows.map((flow) => (
-          <FlowCard
-            flow={flow}
-            key={flow.name}
-            onStreamSelect={(nextFlow, stream) => setSelectedStream({ flow: nextFlow, stream })}
-          />
-        ))}
-      </section>
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {flows.map((flow) => (
+                <article
+                  className="rounded-[24px] border border-[#E2EBE4] bg-[#FBFDFB] p-4"
+                  key={flow.name}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2.5 rounded-full" style={{ background: flow.accent }} />
+                      <span className="font-medium text-[#2A4035]">{flow.name}</span>
+                    </div>
+                    <span className="text-sm text-[#687B70]">{flow.time}</span>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {flow.streams.map((stream) => (
+                      <button
+                        className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-[#E7EFE9] bg-white px-3 py-3 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
+                        key={stream.name}
+                        onClick={() => {
+                          setSelectedStream({ flow, stream })
+                          setSelectedTimelineItem(null)
+                        }}
+                        type="button"
+                      >
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-medium text-[#263C31]">{stream.name}</p>
+                          <p className="mt-1 text-xs text-[#788981]">{stream.activities} активностей</p>
+                        </div>
+                        <span className="shrink-0 text-sm text-[#617469]">{stream.time}</span>
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+      </div>
+
+      <aside className="space-y-5">
+        <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+          {!selectedTimelineItem && !selectedStream ? (
+            <>
+              <p className="font-['Georgia'] text-[1.9rem] text-[#24382F]">Твой день</p>
+              <div className="mt-5">
+                <FocusDonut centerLabel="Фокус" centerValue={summary.activeTime} segments={donutSegments} />
+              </div>
+              <div className="mt-5 space-y-3">
+                <InsightMetric label="Фокус" value={summary.focusPercent} />
+                <InsightMetric label="Активно" value={summary.activeTime} />
+                <InsightMetric label="Простой" value={summary.idleTime} />
+              </div>
+            </>
+          ) : selectedTimelineItem ? (
+            <TimelineInspector item={selectedTimelineItem} onReset={() => setSelectedTimelineItem(null)} />
+          ) : selectedStream ? (
+            <StreamInspector selectedStream={selectedStream} onReset={() => setSelectedStream(null)} />
+          ) : null}
+        </section>
+      </aside>
 
       {pendingIdleLog && (
         <IdleReviewDialog
@@ -284,73 +371,134 @@ export function TodayPage() {
           }
         />
       )}
-
-      {selectedStream && (
-        <StreamDetailsDialog
-          selectedStream={selectedStream}
-          onClose={() => setSelectedStream(null)}
-        />
-      )}
     </div>
   )
 }
 
-type StreamDetailsDialogProps = {
-  selectedStream: SelectedStream
-  onClose: () => void
+function buildDonutSegments(flows: FlowSummary[]) {
+  if (flows.length === 0) {
+    return [{ label: "Активно", value: 100, color: "#7CB39A" }]
+  }
+
+  const total = Math.max(
+    1,
+    flows.reduce((sum, flow) => sum + parseDuration(flow.time), 0),
+  )
+
+  return flows.map((flow) => ({
+    label: flow.name,
+    value: Math.max(1, Math.round((parseDuration(flow.time) / total) * 100)),
+    color: flow.accent,
+  }))
 }
 
-function StreamDetailsDialog({ selectedStream, onClose }: StreamDetailsDialogProps) {
+function parseDuration(value: string) {
+  const hoursMatch = value.match(/(\d+)\s*ч/)
+  const minutesMatch = value.match(/(\d+)\s*мин/)
+  return Number(hoursMatch?.[1] ?? 0) * 60 + Number(minutesMatch?.[1] ?? 0)
+}
+
+function formatCacheTime(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
+}
+
+function InsightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <p className="text-sm text-[#73867A]">{label}</p>
+      <p className="mt-2 text-[1.45rem] font-medium text-[#253D31]">{value}</p>
+    </div>
+  )
+}
+
+function TimelineInspector({
+  item,
+  onReset,
+}: {
+  item: TimelineItem
+  onReset: () => void
+}) {
+  return (
+    <div>
+      <button
+        className="inline-flex items-center gap-2 text-sm text-[#6C7E74] transition hover:text-[#273E31]"
+        onClick={onReset}
+        type="button"
+      >
+        <ArrowRight className="size-4 rotate-180" />
+        Назад к обзору
+      </button>
+      <p className="mt-4 font-['Georgia'] text-[1.7rem] leading-tight text-[#24382F]">{item.label}</p>
+      <div className="mt-4 space-y-3">
+        <InsightMetric label="Время" value={`${item.start} - ${item.end}`} />
+        <InsightMetric label="Длительность" value={formatMinutes(item.durationMinutes)} />
+        <InsightMetric label="Поток" value={item.flow} />
+        <InsightMetric label="Источник" value={item.app} />
+        {item.url && <InsightMetric label="URL" value={item.url} />}
+      </div>
+    </div>
+  )
+}
+
+function StreamInspector({
+  selectedStream,
+  onReset,
+}: {
+  selectedStream: SelectedStream
+  onReset: () => void
+}) {
   const details = selectedStream.stream.details ?? []
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-4">
-      <section className="relative max-h-[80vh] w-full max-w-xl overflow-hidden rounded-md border border-zinc-200 bg-white shadow-xl">
-        <Button
-          aria-label="Закрыть"
-          className="absolute right-3 top-3"
-          onClick={onClose}
-          size="icon-sm"
-          type="button"
-          variant="ghost"
-        >
-          <X className="size-4" />
-        </Button>
+    <div>
+      <button
+        className="inline-flex items-center gap-2 text-sm text-[#6C7E74] transition hover:text-[#273E31]"
+        onClick={onReset}
+        type="button"
+      >
+        <ArrowRight className="size-4 rotate-180" />
+        Назад к обзору
+      </button>
 
-        <div className="border-b border-zinc-200 px-4 py-3 pr-12">
-          <div className="flex items-center gap-2">
-            <span className="size-2.5 rounded-full" style={{ background: selectedStream.flow.accent }} />
-            <p className="text-xs text-zinc-500">{selectedStream.flow.name}</p>
-          </div>
-          <h2 className="mt-1 text-sm font-semibold">{selectedStream.stream.name}</h2>
-          <p className="mt-1 text-xs text-zinc-500">
-            {selectedStream.stream.time} · {selectedStream.stream.activities} активностей
-          </p>
-        </div>
+      <div className="mt-4 flex items-center gap-2">
+        <span className="size-2.5 rounded-full" style={{ backgroundColor: selectedStream.flow.accent }} />
+        <span className="text-sm text-[#6F8177]">{selectedStream.flow.name}</span>
+      </div>
+      <p className="mt-3 font-['Georgia'] text-[1.7rem] leading-tight text-[#24382F]">
+        {selectedStream.stream.name}
+      </p>
 
-        <div className="max-h-[56vh] overflow-y-auto divide-y divide-zinc-100">
-          {details.length === 0 && (
-            <div className="px-4 py-6 text-center text-sm text-zinc-500">
-              Детали для этого стрима пока не сохранены
-            </div>
-          )}
+      <div className="mt-4 space-y-3">
+        <InsightMetric label="Всего" value={selectedStream.stream.time} />
+        <InsightMetric label="Активностей" value={String(selectedStream.stream.activities)} />
+      </div>
 
-          {details.map((activity, index) => (
-            <div className="grid gap-1 px-4 py-3" key={`${activity.start}-${activity.app}-${index}`}>
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{activity.label}</p>
-                  <p className="mt-1 text-xs text-zinc-500">{activity.app}</p>
-                </div>
-                <span className="shrink-0 text-xs font-medium text-zinc-600">{activity.duration}</span>
+      <div className="mt-5 space-y-3">
+        {details.length === 0 && (
+          <p className="text-sm text-[#74867B]">Детали этого стрима пока не собраны.</p>
+        )}
+
+        {details.map((activity, index) => (
+          <div
+            className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
+            key={`${activity.start}-${activity.app}-${index}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#273E31]">{activity.label}</p>
+                <p className="mt-1 text-xs text-[#7B8D84]">{activity.app}</p>
               </div>
-              <p className="text-xs text-zinc-500">
-                {activity.start} - {activity.end}
-              </p>
+              <span className="text-sm text-[#62756A]">{activity.duration}</span>
             </div>
-          ))}
-        </div>
-      </section>
+            <p className="mt-2 text-xs text-[#87978F]">
+              {activity.start} - {activity.end}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -377,11 +525,11 @@ function IdleReviewDialog({
   const duration = formatMinutes(durationMinutes(idleLog.start_time, idleLog.end_time))
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-4">
-      <section className="relative w-full max-w-md rounded-md border border-zinc-200 bg-white p-4 shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#203228]/25 px-4 backdrop-blur-sm">
+      <section className="relative w-full max-w-md rounded-[28px] border border-white/90 bg-white p-5 shadow-[0_24px_80px_rgba(70,94,82,0.18)]">
         <Button
           aria-label="Закрыть"
-          className="absolute right-3 top-3"
+          className="absolute right-4 top-4"
           onClick={onPostpone}
           size="icon-sm"
           type="button"
@@ -390,23 +538,20 @@ function IdleReviewDialog({
           <X className="size-4" />
         </Button>
         <div>
-          <h2 className="text-sm font-semibold">Уточнить простой</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+          <h2 className="font-['Georgia'] text-[1.55rem] text-[#24382F]">Уточнить простой</h2>
+          <p className="mt-2 text-sm leading-6 text-[#6F8177]">
             Зафиксирован перерыв с {start} до {end}, {duration}.
           </p>
         </div>
 
         <textarea
-          className="mt-4 min-h-24 w-full resize-none rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm outline-none focus:border-zinc-400"
+          className="mt-5 min-h-28 w-full resize-none rounded-[20px] border border-[#DCE7DE] bg-[#FBFDFB] px-4 py-3 text-sm outline-none transition focus:border-[#9DC3AC]"
           onChange={(event) => onNoteChange(event.target.value)}
           placeholder="Например: обед, звонок, дорога"
           value={note}
         />
 
-        <div className="mt-4 flex justify-end gap-2">
-          <Button onClick={onPostpone} type="button" variant="ghost">
-            Позже
-          </Button>
+        <div className="mt-5 flex justify-end gap-2">
           <Button onClick={onIgnore} type="button" variant="outline">
             Игнорировать
           </Button>

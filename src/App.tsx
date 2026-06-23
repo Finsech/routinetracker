@@ -1,6 +1,7 @@
 import { useState } from "react"
 
 import { AppShell } from "@/components/app/AppShell"
+import { AnalyticsPage } from "@/pages/AnalyticsPage"
 import { HistoryPage } from "@/pages/HistoryPage"
 import { SettingsPage } from "@/pages/SettingsPage"
 import { TodayPage } from "@/pages/TodayPage"
@@ -12,11 +13,11 @@ function App() {
   return (
     <AppShell activeView={view} onViewChange={setView}>
       {view === "today" && <TodayPage />}
-      {view === "history" && <HistoryPage />}
+      {view === "week" && <HistoryPage />}
+      {view === "analytics" && <AnalyticsPage />}
       {view === "settings" && <SettingsPage />}
     </AppShell>
   )
 }
 
 export default App
-

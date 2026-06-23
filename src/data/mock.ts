@@ -4,7 +4,7 @@ export const flows: FlowSummary[] = [
   {
     name: "Работа",
     time: "4 ч 35 мин",
-    accent: "#22C55E",
+    accent: "#7CB39A",
     streams: [
       { name: "Разработка FocusFlow", time: "2 ч 45 мин", activities: 8 },
       { name: "Подготовка спецификации", time: "1 ч 10 мин", activities: 4 },
@@ -14,7 +14,7 @@ export const flows: FlowSummary[] = [
   {
     name: "Обучение",
     time: "1 ч 20 мин",
-    accent: "#38BDF8",
+    accent: "#86B8E5",
     streams: [
       { name: "Документация Tauri", time: "45 мин", activities: 3 },
       { name: "Примеры SQLite", time: "35 мин", activities: 2 },
@@ -23,18 +23,18 @@ export const flows: FlowSummary[] = [
   {
     name: "Рутина",
     time: "35 мин",
-    accent: "#F59E0B",
+    accent: "#F2B880",
     streams: [{ name: "Почта и календарь", time: "35 мин", activities: 6 }],
   },
 ]
 
 export const timeline: TimelineItem[] = [
-  { start: "09:00", label: "Планирование дня", app: "Notion", flow: "Работа", size: "h-14" },
-  { start: "10:00", label: "Разработка FocusFlow", app: "Code", flow: "Работа", size: "h-24" },
-  { start: "12:00", label: "Перерыв", app: "Idle", flow: "Уточнить", size: "h-12" },
-  { start: "13:00", label: "Документация Tauri", app: "Browser", flow: "Обучение", size: "h-16" },
-  { start: "14:00", label: "LLM-саммаризация", app: "Code", flow: "Работа", size: "h-20" },
-  { start: "16:00", label: "Почта и календарь", app: "Browser", flow: "Рутина", size: "h-12" },
+  buildTimelineItem("09:00", "09:40", "Планирование дня", "Notion", "Работа", "#7CB39A"),
+  buildTimelineItem("10:00", "11:35", "Разработка FocusFlow", "Code", "Работа", "#7CB39A"),
+  buildTimelineItem("12:00", "12:30", "Перерыв", "Idle", "Простой", "#D9A66C", "idle"),
+  buildTimelineItem("13:00", "13:50", "Документация Tauri", "Browser", "Обучение", "#86B8E5"),
+  buildTimelineItem("14:00", "15:10", "LLM-саммаризация", "Code", "Работа", "#7CB39A"),
+  buildTimelineItem("16:00", "16:35", "Почта и календарь", "Browser", "Рутина", "#F2B880"),
 ]
 
 export const week: WeekActivity[] = [
@@ -56,3 +56,35 @@ export const settingsRows: SettingRow[] = [
   { label: "LLM-модель", value: "qwen2.5:7b-instruct" },
   { label: "Экспорт", value: "JSON" },
 ]
+
+function buildTimelineItem(
+  start: string,
+  end: string,
+  label: string,
+  app: string,
+  flow: string,
+  accent: string,
+  kind: "activity" | "idle" = "activity",
+): TimelineItem {
+  const startMinutes = toMinutes(start)
+  const endMinutes = toMinutes(end)
+
+  return {
+    start,
+    end,
+    label,
+    app,
+    flow,
+    accent,
+    durationMinutes: endMinutes - startMinutes,
+    startMinutes,
+    endMinutes,
+    kind,
+    url: null,
+  }
+}
+
+function toMinutes(value: string) {
+  const [hours, minutes] = value.split(":").map(Number)
+  return hours * 60 + minutes
+}

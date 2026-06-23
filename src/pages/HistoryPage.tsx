@@ -31,7 +31,7 @@ export function HistoryPage() {
         }
       } catch {
         if (active) {
-          setError("Не удалось загрузить историю")
+          setError("Не удалось загрузить недельную историю")
         }
       } finally {
         if (active) {
@@ -50,21 +50,21 @@ export function HistoryPage() {
   }, [])
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="rounded-md border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-          Загружаю историю активности
+        <div className="rounded-[22px] border border-white/80 bg-white/75 px-4 py-3 text-sm text-[#667A6F] shadow-[0_14px_40px_rgba(91,121,108,0.06)]">
+          Собираю недельную картину активности.
         </div>
       )}
 
-      <Heatmap levels={summary.heatmapLevels} totalHours={summary.totalHours} />
       <WeekTimeline items={summary.week} />
+      <Heatmap levels={summary.heatmapLevels} totalHours={summary.totalHours} />
     </div>
   )
 }

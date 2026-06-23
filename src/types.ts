@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react"
 
-export type View = "today" | "history" | "settings"
+export type View = "today" | "week" | "analytics" | "settings"
 
 export type NavItem = {
   id: View
@@ -32,10 +32,16 @@ export type FlowSummary = {
 
 export type TimelineItem = {
   start: string
+  end: string
   label: string
   app: string
   flow: string
-  size: string
+  accent: string
+  durationMinutes: number
+  startMinutes: number
+  endMinutes: number
+  kind: "activity" | "idle"
+  url?: string | null
 }
 
 export type WeekActivity = {
