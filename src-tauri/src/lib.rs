@@ -21,6 +21,14 @@ pub fn run() {
             app.manage(Tracker::default());
             Ok(())
         })
+        .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                let tracker = window.state::<Tracker>();
+                if let Err(error) = tracker.stop() {
+                    eprintln!("Не удалось остановить tracker при закрытии окна: {error}");
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             greet,
             database::get_activity_logs,

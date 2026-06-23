@@ -98,6 +98,18 @@ impl Tracker {
             idle_seconds: self.idle_seconds.load(Ordering::SeqCst),
         }
     }
+
+    fn shutdown(&self) {
+        if let Err(error) = self.stop() {
+            eprintln!("Не удалось остановить tracker: {error}");
+        }
+    }
+}
+
+impl Drop for Tracker {
+    fn drop(&mut self) {
+        self.shutdown();
+    }
 }
 
 #[tauri::command]
