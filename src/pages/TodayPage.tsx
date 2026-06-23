@@ -4,23 +4,30 @@ import { DayTimeline } from "@/components/dashboard/DayTimeline"
 import { FlowCard } from "@/components/dashboard/FlowCard"
 import { MetricCard } from "@/components/dashboard/MetricCard"
 import { buildTodaySummary } from "@/lib/activity-analytics"
-import { getActivityLogs, type ActivityLogRecord } from "@/lib/focusflow-api"
+import {
+  getActivityLogs,
+  getIdleLogs,
+  type ActivityLogRecord,
+  type IdleLogRecord,
+} from "@/lib/focusflow-api"
 
 export function TodayPage() {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
+  const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const summary = useMemo(() => buildTodaySummary(logs), [logs])
+  const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
 
   useEffect(() => {
     let active = true
 
     async function loadLogs() {
       try {
-        const nextLogs = await getActivityLogs()
+        const [nextLogs, nextIdleLogs] = await Promise.all([getActivityLogs(), getIdleLogs()])
 
         if (active) {
           setLogs(nextLogs)
+          setIdleLogs(nextIdleLogs)
           setError(null)
         }
       } catch {

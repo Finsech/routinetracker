@@ -1,4 +1,4 @@
-use crate::database::{Database, NewActivityLog};
+use crate::database::{Database, NewActivityLog, NewIdleLog};
 use chrono::{Duration as ChronoDuration, Utc};
 use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -121,16 +121,27 @@ fn tracking_loop(
     idle_seconds: Arc<AtomicU64>,
 ) {
     let mut current: Option<ActiveSession> = None;
+    let mut idle_start: Option<String> = None;
 
     while running.load(Ordering::SeqCst) {
         let idle_duration = read_idle_duration();
         idle_seconds.store(idle_duration.as_secs(), Ordering::SeqCst);
 
         if idle_duration >= IDLE_THRESHOLD {
-            close_session_at(&app, current.take(), timestamp_before(idle_duration));
+            let last_input_time = timestamp_before(idle_duration);
+            let had_current_session = current.is_some();
+
+            close_session_at(&app, current.take(), last_input_time.clone());
             set_current_snapshot(&current_snapshot, None);
+            if idle_start.is_none() && had_current_session {
+                idle_start = Some(last_input_time);
+            }
             thread::sleep(POLL_INTERVAL);
             continue;
+        }
+
+        if let Some(start_time) = idle_start.take() {
+            close_idle_session(&app, start_time, now());
         }
 
         if let Some(snapshot) = read_active_window() {
@@ -153,6 +164,9 @@ fn tracking_loop(
     }
 
     close_session(&app, current);
+    if let Some(start_time) = idle_start {
+        close_idle_session(&app, start_time, now());
+    }
     set_current_snapshot(&current_snapshot, None);
     idle_seconds.store(0, Ordering::SeqCst);
 }
@@ -177,6 +191,20 @@ fn close_session_at(app: &AppHandle, session: Option<ActiveSession>, end_time: S
 
     if let Err(error) = result {
         eprintln!("Не удалось сохранить активность: {error}");
+    }
+}
+
+fn close_idle_session(app: &AppHandle, start_time: String, end_time: String) {
+    let database = app.state::<Database>();
+    let result = database.insert_idle_log(NewIdleLog {
+        start_time,
+        end_time,
+        note: None,
+        ignored: false,
+    });
+
+    if let Err(error) = result {
+        eprintln!("Не удалось сохранить простой: {error}");
     }
 }
 

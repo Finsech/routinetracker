@@ -13,6 +13,16 @@ export type ActivityLogRecord = {
 
 export type NewActivityLogRecord = Omit<ActivityLogRecord, "id">
 
+export type IdleLogRecord = {
+  id: number
+  start_time: string
+  end_time: string
+  note: string | null
+  ignored: boolean
+}
+
+export type NewIdleLogRecord = Omit<IdleLogRecord, "id">
+
 export type SettingEntryRecord = {
   key: string
   value: string
@@ -54,6 +64,28 @@ export async function getActivityLogs() {
 
 export async function createActivityLog(input: NewActivityLogRecord) {
   return invoke<ActivityLogRecord>("create_activity_log", { input })
+}
+
+export async function getIdleLogs() {
+  if (!isTauriRuntime()) {
+    const dateKey = mockDateKey()
+
+    return [
+      {
+        id: 1,
+        start_time: `${dateKey}T12:00:00`,
+        end_time: `${dateKey}T12:30:00`,
+        note: null,
+        ignored: false,
+      },
+    ]
+  }
+
+  return invoke<IdleLogRecord[]>("get_idle_logs")
+}
+
+export async function createIdleLog(input: NewIdleLogRecord) {
+  return invoke<IdleLogRecord>("create_idle_log", { input })
 }
 
 export async function getSettings() {

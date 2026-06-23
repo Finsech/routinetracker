@@ -19,6 +19,15 @@ pub struct ActivityLog {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+pub struct IdleLog {
+    pub id: i64,
+    pub start_time: String,
+    pub end_time: String,
+    pub note: Option<String>,
+    pub ignored: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewActivityLog {
     pub start_time: String,
@@ -26,6 +35,14 @@ pub struct NewActivityLog {
     pub app_name: String,
     pub window_title: Option<String>,
     pub url: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct NewIdleLog {
+    pub start_time: String,
+    pub end_time: String,
+    pub note: Option<String>,
+    pub ignored: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -96,6 +113,21 @@ impl Database {
             get_activity_log_by_id(connection, id)
         })
     }
+
+    pub fn insert_idle_log(&self, input: NewIdleLog) -> Result<IdleLog, String> {
+        self.with_connection(|connection| {
+            connection
+                .execute(
+                    "INSERT INTO idle_log (start_time, end_time, note, ignored)
+                     VALUES (?1, ?2, ?3, ?4)",
+                    params![input.start_time, input.end_time, input.note, input.ignored],
+                )
+                .map_err(|error| error.to_string())?;
+
+            let id = connection.last_insert_rowid();
+            get_idle_log_by_id(connection, id)
+        })
+    }
 }
 
 #[tauri::command]
@@ -133,6 +165,42 @@ pub fn create_activity_log(
     input: NewActivityLog,
 ) -> Result<ActivityLog, String> {
     database.insert_activity_log(input)
+}
+
+#[tauri::command]
+pub fn get_idle_logs(database: tauri::State<Database>) -> Result<Vec<IdleLog>, String> {
+    database.with_connection(|connection| {
+        let mut statement = connection
+            .prepare(
+                "SELECT id, start_time, end_time, note, ignored
+                 FROM idle_log
+                 ORDER BY start_time DESC",
+            )
+            .map_err(|error| error.to_string())?;
+
+        let rows = statement
+            .query_map([], |row| {
+                Ok(IdleLog {
+                    id: row.get(0)?,
+                    start_time: row.get(1)?,
+                    end_time: row.get(2)?,
+                    note: row.get(3)?,
+                    ignored: row.get(4)?,
+                })
+            })
+            .map_err(|error| error.to_string())?;
+
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|error| error.to_string())
+    })
+}
+
+#[tauri::command]
+pub fn create_idle_log(
+    database: tauri::State<Database>,
+    input: NewIdleLog,
+) -> Result<IdleLog, String> {
+    database.insert_idle_log(input)
 }
 
 #[tauri::command]
@@ -252,6 +320,14 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 value TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS idle_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                start_time DATETIME NOT NULL,
+                end_time DATETIME NOT NULL,
+                note TEXT,
+                ignored INTEGER NOT NULL DEFAULT 0
+            );
+
             CREATE TABLE IF NOT EXISTS stoplist (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 type TEXT NOT NULL,
@@ -285,6 +361,26 @@ fn get_activity_log_by_id(connection: &Connection, id: i64) -> Result<ActivityLo
                     app_name: row.get(3)?,
                     window_title: row.get(4)?,
                     url: row.get(5)?,
+                })
+            },
+        )
+        .map_err(|error| error.to_string())
+}
+
+fn get_idle_log_by_id(connection: &Connection, id: i64) -> Result<IdleLog, String> {
+    connection
+        .query_row(
+            "SELECT id, start_time, end_time, note, ignored
+             FROM idle_log
+             WHERE id = ?1",
+            params![id],
+            |row| {
+                Ok(IdleLog {
+                    id: row.get(0)?,
+                    start_time: row.get(1)?,
+                    end_time: row.get(2)?,
+                    note: row.get(3)?,
+                    ignored: row.get(4)?,
                 })
             },
         )

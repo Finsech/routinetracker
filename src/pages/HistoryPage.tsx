@@ -3,23 +3,30 @@ import { useEffect, useMemo, useState } from "react"
 import { Heatmap } from "@/components/dashboard/Heatmap"
 import { WeekTimeline } from "@/components/dashboard/WeekTimeline"
 import { buildHistorySummary } from "@/lib/activity-analytics"
-import { getActivityLogs, type ActivityLogRecord } from "@/lib/focusflow-api"
+import {
+  getActivityLogs,
+  getIdleLogs,
+  type ActivityLogRecord,
+  type IdleLogRecord,
+} from "@/lib/focusflow-api"
 
 export function HistoryPage() {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
+  const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const summary = useMemo(() => buildHistorySummary(logs), [logs])
+  const summary = useMemo(() => buildHistorySummary(logs, idleLogs), [idleLogs, logs])
 
   useEffect(() => {
     let active = true
 
     async function loadLogs() {
       try {
-        const nextLogs = await getActivityLogs()
+        const [nextLogs, nextIdleLogs] = await Promise.all([getActivityLogs(), getIdleLogs()])
 
         if (active) {
           setLogs(nextLogs)
+          setIdleLogs(nextIdleLogs)
           setError(null)
         }
       } catch {

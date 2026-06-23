@@ -1,8 +1,13 @@
-import type { ActivityLogRecord } from "@/lib/focusflow-api"
+import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import type { FlowSummary, TimelineItem, WeekActivity } from "@/types"
 
 const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
 const RAW_FLOW_NAME = "Сырые активности"
+
+type TimeRangeRecord = {
+  start_time: string
+  end_time: string
+}
 
 export type TodayActivitySummary = {
   timeline: TimelineItem[]
@@ -19,33 +24,52 @@ export type HistoryActivitySummary = {
   heatmapLevels: number[]
 }
 
-export function buildTodaySummary(logs: ActivityLogRecord[], date = new Date()): TodayActivitySummary {
+export function buildTodaySummary(
+  logs: ActivityLogRecord[],
+  idleLogs: IdleLogRecord[] = [],
+  date = new Date(),
+): TodayActivitySummary {
   const todayLogs = logs
     .filter((log) => isSameDay(new Date(log.start_time), date))
     .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
+  const todayIdleLogs = idleLogs
+    .filter((log) => !log.ignored && isSameDay(new Date(log.start_time), date))
+    .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
 
   const totalMinutes = todayLogs.reduce((sum, log) => sum + durationMinutes(log), 0)
+  const idleMinutes = todayIdleLogs.reduce((sum, log) => sum + durationMinutes(log), 0)
+  const trackedMinutes = totalMinutes + idleMinutes
 
   return {
-    timeline: todayLogs.map(toTimelineItem),
+    timeline: [
+      ...todayLogs.map(toTimelineItem),
+      ...todayIdleLogs.map(toIdleTimelineItem),
+    ].sort((left, right) => clockSortValue(left.start) - clockSortValue(right.start)),
     flows: buildAppFlows(todayLogs),
-    focusPercent: totalMinutes > 0 ? "100%" : "0%",
+    focusPercent: trackedMinutes > 0 ? `${Math.round((totalMinutes / trackedMinutes) * 100)}%` : "0%",
     activeTime: formatMinutes(totalMinutes),
-    idleTime: "0 мин",
+    idleTime: formatMinutes(idleMinutes),
     totalMinutes,
   }
 }
 
-export function buildHistorySummary(logs: ActivityLogRecord[], date = new Date()): HistoryActivitySummary {
+export function buildHistorySummary(
+  logs: ActivityLogRecord[],
+  idleLogs: IdleLogRecord[] = [],
+  date = new Date(),
+): HistoryActivitySummary {
   const days = buildLastSevenDays(date)
   const week = days.map((day) => {
-    const minutes = logs
+    const activeMinutes = logs
       .filter((log) => isSameDay(new Date(log.start_time), day))
+      .reduce((sum, log) => sum + durationMinutes(log), 0)
+    const idleMinutes = idleLogs
+      .filter((log) => !log.ignored && isSameDay(new Date(log.start_time), day))
       .reduce((sum, log) => sum + durationMinutes(log), 0)
 
     return {
       day: DAY_LABELS[day.getDay()],
-      hours: minutes / 60,
+      hours: (activeMinutes + idleMinutes) / 60,
     }
   })
 
@@ -118,7 +142,19 @@ function toTimelineItem(log: ActivityLogRecord): TimelineItem {
   }
 }
 
-function durationMinutes(log: ActivityLogRecord) {
+function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
+  const minutes = durationMinutes(log)
+
+  return {
+    start: formatClock(log.start_time),
+    label: log.note || "Простой",
+    app: "Idle",
+    flow: "Уточнить",
+    size: heightClass(minutes),
+  }
+}
+
+function durationMinutes(log: TimeRangeRecord) {
   const start = timeValue(log.start_time)
   const end = timeValue(log.end_time)
 
@@ -127,6 +163,11 @@ function durationMinutes(log: ActivityLogRecord) {
   }
 
   return (end - start) / 60_000
+}
+
+function clockSortValue(value: string) {
+  const [hours = "0", minutes = "0"] = value.split(":")
+  return Number(hours) * 60 + Number(minutes)
 }
 
 function timeValue(value: string) {
