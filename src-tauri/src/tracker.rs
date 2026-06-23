@@ -4,12 +4,16 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
+const EVENT_WAIT_SLICE: Duration = Duration::from_millis(250);
 const IDLE_THRESHOLD: Duration = Duration::from_secs(10 * 60);
 const MIN_ACTIVITY_DURATION: Duration = Duration::from_secs(5);
+
+#[cfg(target_os = "windows")]
+static FOREGROUND_CHANGED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Default)]
 pub struct Tracker {
@@ -135,6 +139,10 @@ fn tracking_loop(
 ) {
     let mut current: Option<ActiveSession> = None;
     let mut idle_start: Option<String> = None;
+    let mut last_snapshot_poll = Instant::now()
+        .checked_sub(POLL_INTERVAL)
+        .unwrap_or_else(Instant::now);
+    let _foreground_hook = install_foreground_event_hook();
 
     while running.load(Ordering::SeqCst) {
         let idle_duration = read_idle_duration();
@@ -149,7 +157,7 @@ fn tracking_loop(
             if idle_start.is_none() && had_current_session {
                 idle_start = Some(last_input_time);
             }
-            thread::sleep(POLL_INTERVAL);
+            wait_for_next_tracking_iteration(&running, &mut last_snapshot_poll);
             continue;
         }
 
@@ -157,30 +165,35 @@ fn tracking_loop(
             close_idle_session(&app, start_time, now());
         }
 
-        if let Some(snapshot) = read_active_window() {
-            if is_stoplisted(&app, &snapshot) {
+        if should_refresh_snapshot(&mut last_snapshot_poll) {
+            if let Some(snapshot) = read_active_window() {
+                if is_stoplisted(&app, &snapshot) {
+                    close_session(&app, current.take());
+                    set_current_snapshot(&current_snapshot, None);
+                    wait_for_next_tracking_iteration(&running, &mut last_snapshot_poll);
+                    continue;
+                }
+
+                set_current_snapshot(&current_snapshot, Some(snapshot.clone()));
+
+                if current
+                    .as_ref()
+                    .map(|session| session.snapshot != snapshot)
+                    .unwrap_or(true)
+                {
+                    close_session(&app, current.take());
+                    current = Some(ActiveSession {
+                        snapshot,
+                        start_time: now(),
+                    });
+                }
+            } else {
                 close_session(&app, current.take());
                 set_current_snapshot(&current_snapshot, None);
-                thread::sleep(POLL_INTERVAL);
-                continue;
-            }
-
-            set_current_snapshot(&current_snapshot, Some(snapshot.clone()));
-
-            if current
-                .as_ref()
-                .map(|session| session.snapshot != snapshot)
-                .unwrap_or(true)
-            {
-                close_session(&app, current.take());
-                current = Some(ActiveSession {
-                    snapshot,
-                    start_time: now(),
-                });
             }
         }
 
-        thread::sleep(POLL_INTERVAL);
+        wait_for_next_tracking_iteration(&running, &mut last_snapshot_poll);
     }
 
     close_session(&app, current);
@@ -291,6 +304,128 @@ fn set_current_snapshot(
     if let Ok(mut snapshot) = current_snapshot.lock() {
         *snapshot = next_snapshot;
     }
+}
+
+fn should_refresh_snapshot(last_snapshot_poll: &mut Instant) -> bool {
+    if take_foreground_changed_signal() || last_snapshot_poll.elapsed() >= POLL_INTERVAL {
+        *last_snapshot_poll = Instant::now();
+        return true;
+    }
+
+    false
+}
+
+fn wait_for_next_tracking_iteration(running: &AtomicBool, last_snapshot_poll: &mut Instant) {
+    while running.load(Ordering::SeqCst)
+        && !foreground_change_pending()
+        && last_snapshot_poll.elapsed() < POLL_INTERVAL
+    {
+        let remaining = POLL_INTERVAL.saturating_sub(last_snapshot_poll.elapsed());
+        wait_for_tracking_signal(remaining.min(EVENT_WAIT_SLICE));
+    }
+}
+
+#[cfg(target_os = "windows")]
+struct ForegroundEventHook {
+    hook: windows::Win32::UI::Accessibility::HWINEVENTHOOK,
+}
+
+#[cfg(target_os = "windows")]
+impl Drop for ForegroundEventHook {
+    fn drop(&mut self) {
+        unsafe {
+            let _ = windows::Win32::UI::Accessibility::UnhookWinEvent(self.hook);
+        }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn install_foreground_event_hook() -> Option<ForegroundEventHook> {
+    use windows::Win32::UI::Accessibility::SetWinEventHook;
+    use windows::Win32::UI::WindowsAndMessaging::{EVENT_SYSTEM_FOREGROUND, WINEVENT_OUTOFCONTEXT};
+
+    let hook = unsafe {
+        SetWinEventHook(
+            EVENT_SYSTEM_FOREGROUND,
+            EVENT_SYSTEM_FOREGROUND,
+            None,
+            Some(foreground_event_callback),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT,
+        )
+    };
+
+    if hook.is_invalid() {
+        eprintln!("Не удалось подключить foreground hook, трекер продолжит работать через polling");
+        None
+    } else {
+        FOREGROUND_CHANGED.store(true, Ordering::SeqCst);
+        Some(ForegroundEventHook { hook })
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn install_foreground_event_hook() -> Option<()> {
+    None
+}
+
+#[cfg(target_os = "windows")]
+unsafe extern "system" fn foreground_event_callback(
+    _hook: windows::Win32::UI::Accessibility::HWINEVENTHOOK,
+    _event: u32,
+    _hwnd: windows::Win32::Foundation::HWND,
+    _object_id: i32,
+    _child_id: i32,
+    _event_thread_id: u32,
+    _event_time: u32,
+) {
+    FOREGROUND_CHANGED.store(true, Ordering::SeqCst);
+}
+
+#[cfg(target_os = "windows")]
+fn foreground_change_pending() -> bool {
+    FOREGROUND_CHANGED.load(Ordering::SeqCst)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn foreground_change_pending() -> bool {
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn take_foreground_changed_signal() -> bool {
+    FOREGROUND_CHANGED.swap(false, Ordering::SeqCst)
+}
+
+#[cfg(not(target_os = "windows"))]
+fn take_foreground_changed_signal() -> bool {
+    false
+}
+
+#[cfg(target_os = "windows")]
+fn wait_for_tracking_signal(timeout: Duration) {
+    use windows::Win32::UI::WindowsAndMessaging::{
+        DispatchMessageW, MsgWaitForMultipleObjects, PeekMessageW, TranslateMessage, MSG,
+        PM_REMOVE, QS_ALLINPUT,
+    };
+
+    let timeout_ms = timeout.as_millis().min(u32::MAX as u128) as u32;
+
+    unsafe {
+        let _ = MsgWaitForMultipleObjects(None, false, timeout_ms, QS_ALLINPUT);
+
+        let mut message = MSG::default();
+        while PeekMessageW(&mut message, None, 0, 0, PM_REMOVE).as_bool() {
+            let _ = TranslateMessage(&message);
+            DispatchMessageW(&message);
+        }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn wait_for_tracking_signal(timeout: Duration) {
+    thread::sleep(timeout);
 }
 
 #[cfg(target_os = "windows")]
