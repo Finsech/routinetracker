@@ -229,7 +229,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const donutSegments = buildDonutSegments(flows)
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
       <div className="space-y-5">
         {error && (
           <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
@@ -250,20 +250,20 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       </div>
 
       <aside className="space-y-5">
-        <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+        <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
           {!selectedTimelineItem && !selectedStream ? (
             <>
-              <p className="font-['Georgia'] text-[1.9rem] text-[#24382F]">Твой день</p>
-              <div className="mt-5">
+              <p className="font-['Georgia'] text-[1.72rem] text-[#24382F]">Твой день</p>
+              <div className="mt-4">
                 <FocusDonut centerLabel="Фокус" centerValue={summary.activeTime} segments={donutSegments} />
               </div>
-              <div className="mt-5 space-y-3">
+              <div className="mt-4 space-y-2.5">
                 <InsightMetric label="Фокус" value={summary.focusPercent} />
                 <InsightMetric label="Активно" value={summary.activeTime} />
                 <InsightMetric label="Простой" value={summary.idleTime} />
               </div>
               {(llmCachedAt || llmError || loading) && (
-                <p className="mt-5 text-sm text-[#73867A]">
+                <p className="mt-4 text-[13px] leading-6 text-[#73867A]">
                   {llmError
                     ? llmError
                     : loading
@@ -281,18 +281,18 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
           ) : null}
         </section>
 
-        <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+        <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-['Georgia'] text-[1.55rem] text-[#24382F]">Потоки и стримы</p>
-              <p className="mt-2 text-sm text-[#71837A]">
+              <p className="font-['Georgia'] text-[1.42rem] text-[#24382F]">Потоки и стримы</p>
+              <p className="mt-1.5 text-[13px] text-[#71837A]">
                 Здесь живет группировка дня и быстрый доступ к стримам.
               </p>
             </div>
           </div>
 
           <Button
-            className="mt-5 w-full rounded-full"
+            className="mt-4 w-full rounded-full"
             disabled={llmLoading || llmPayload.items.length === 0}
             onClick={() => void generateLlmSummary()}
             size="lg"
@@ -302,16 +302,16 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
           </Button>
 
-          <div className="mt-5 space-y-4">
+          <div className="mt-4 space-y-3">
             {flows.length === 0 && (
-              <p className="text-sm text-[#75877D]">
+              <div className="rounded-[20px] border border-dashed border-[#D9E5DC] bg-[#FBFDFB] px-4 py-4 text-[13px] leading-6 text-[#75877D]">
                 Потоки появятся после первых логов или после ручной группировки дня.
-              </p>
+              </div>
             )}
 
             {flows.map((flow) => (
               <article
-                className="rounded-[24px] border border-[#E2EBE4] bg-[#FBFDFB] p-4"
+                className="rounded-[22px] border border-[#E2EBE4] bg-[#FBFDFB] p-3.5"
                 key={flow.name}
               >
                 <div className="flex items-center justify-between gap-3">
@@ -322,10 +322,10 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
                   <span className="text-sm text-[#687B70]">{flow.time}</span>
                 </div>
 
-                <div className="mt-4 space-y-2">
+                <div className="mt-3 space-y-2">
                   {flow.streams.map((stream) => (
                     <button
-                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-[#E7EFE9] bg-white px-3 py-3 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
+                      className="flex w-full items-center justify-between gap-3 rounded-[16px] border border-[#E7EFE9] bg-white px-3 py-2.5 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
                       key={stream.name}
                       onClick={() => {
                         setSelectedStream({ flow, stream })
@@ -398,9 +398,9 @@ function formatCacheTime(value: string) {
 
 function InsightMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
-      <p className="text-sm text-[#73867A]">{label}</p>
-      <p className="mt-2 text-[1.45rem] font-medium text-[#253D31]">{value}</p>
+    <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <p className="text-[13px] text-[#73867A]">{label}</p>
+      <p className="mt-1.5 text-[1.25rem] font-medium text-[#253D31]">{value}</p>
     </div>
   )
 }
@@ -408,8 +408,8 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
 function InspectorMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
-      <p className="text-sm text-[#73867A]">{label}</p>
-      <p className="mt-2 text-[1.05rem] font-medium text-[#2B4236]">{value}</p>
+      <p className="text-[13px] text-[#73867A]">{label}</p>
+      <p className="mt-1.5 text-[1rem] font-medium text-[#2B4236]">{value}</p>
     </div>
   )
 }

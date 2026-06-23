@@ -96,7 +96,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
     : "Неделя пока пуста"
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {error && (
         <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
           {error}
@@ -109,7 +109,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
         </div>
       )}
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
         <WeekTimeline
           days={summary.weekDays}
           onDaySelect={(day) => {
@@ -125,13 +125,13 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
         />
 
         <aside className="space-y-5">
-          <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+          <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
             {!selectedItem && selectedDay ? (
               <>
-                <p className="font-['Georgia'] text-[1.8rem] text-[#24382F]">Ритм недели</p>
-                <p className="mt-2 text-sm leading-6 text-[#6F8177]">{rangeLabel}</p>
+                <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">Ритм недели</p>
+                <p className="mt-1.5 text-[13px] leading-6 text-[#6F8177]">{rangeLabel}</p>
 
-                <div className="mt-5 space-y-3">
+                <div className="mt-4 space-y-2.5">
                   <InsightMetric label="Всего" value={formatMinutes(totalTrackedMinutes)} />
                   <InsightMetric
                     label="Самый плотный день"
@@ -147,29 +147,29 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                   />
                 </div>
 
-                <div className="mt-5 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                <div className="mt-4 rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
                   <div className="flex items-center gap-2 text-[#6E8176]">
                     <CalendarRange className="size-4" />
-                    <span className="text-sm">Выбранный день</span>
+                    <span className="text-[13px]">Выбранный день</span>
                   </div>
-                  <p className="mt-3 text-[1.35rem] font-medium text-[#274034]">
+                  <p className="mt-2.5 text-[1.2rem] font-medium text-[#274034]">
                     {selectedDay.shortLabel} {selectedDay.dayNumber}
                   </p>
-                  <p className="mt-2 text-sm leading-6 text-[#7A8C83]">
+                  <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
                     {selectedDay.items.length} интервалов, {formatMinutes(selectedDay.totalMinutes)} активности.
                   </p>
                 </div>
 
                 {longestItem && (
-                  <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                  <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
                     <div className="flex items-center gap-2 text-[#6E8176]">
                       <Clock3 className="size-4" />
-                      <span className="text-sm">Самый длинный интервал</span>
+                      <span className="text-[13px]">Самый длинный интервал</span>
                     </div>
-                    <p className="mt-3 text-[1.1rem] font-medium text-[#274034]">
+                    <p className="mt-2.5 text-[1rem] font-medium text-[#274034]">
                       {longestItem.item.label}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-[#7A8C83]">
+                    <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
                       {formatMinutes(longestItem.item.durationMinutes)} в {longestItem.day.shortLabel.toLowerCase()} {longestItem.day.dayNumber}.
                     </p>
                   </div>
@@ -235,9 +235,9 @@ function WeekItemInspector({
 
 function InsightMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
-      <p className="text-sm text-[#73867A]">{label}</p>
-      <p className="mt-2 text-[1.15rem] font-medium text-[#253D31]">{value}</p>
+    <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <p className="text-[13px] text-[#73867A]">{label}</p>
+      <p className="mt-1.5 text-[1.05rem] font-medium text-[#253D31]">{value}</p>
     </div>
   )
 }

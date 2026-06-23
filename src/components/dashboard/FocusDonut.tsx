@@ -17,20 +17,20 @@ export function FocusDonut({ centerLabel, centerValue, segments }: FocusDonutPro
   return (
     <div className="flex flex-col items-center">
       <div
-        className="relative flex size-[220px] items-center justify-center rounded-full"
+        className="relative flex size-[204px] items-center justify-center rounded-full"
         style={{ background: gradient }}
       >
-        <div className="flex size-[126px] flex-col items-center justify-center rounded-full bg-[#FFFDF9] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
-          <span className="text-[10px] uppercase tracking-[0.18em] text-[#8C9B92]">{centerLabel}</span>
-          <span className="mt-2 font-['Georgia'] text-[1.55rem] leading-tight text-[#244133]">
+        <div className="flex size-[118px] flex-col items-center justify-center rounded-full bg-[#FFFDF9] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+          <span className="text-[9px] uppercase tracking-[0.16em] text-[#8C9B92]">{centerLabel}</span>
+          <span className="mt-1.5 font-['Georgia'] text-[1.42rem] leading-tight text-[#244133]">
             {centerValue}
           </span>
         </div>
       </div>
 
-      <div className="mt-5 grid w-full gap-2">
+      <div className="mt-4 grid w-full gap-1.5">
         {segments.map((segment) => (
-          <div className="flex items-center justify-between gap-3 text-sm" key={segment.label}>
+          <div className="flex items-center justify-between gap-3 text-[13px]" key={segment.label}>
             <div className="flex items-center gap-2 text-[#53665C]">
               <span className="size-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
               <span>{segment.label}</span>
