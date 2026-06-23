@@ -1,3 +1,4 @@
+import { StateCard } from "@/components/app/StateCard"
 import type { FlowSummary, TimelineItem } from "@/types"
 
 type DayTimelineProps = {
@@ -81,8 +82,14 @@ export function DayTimeline({
           ))}
 
           {visibleItems.length === 0 && (
-            <div className="flex h-full items-center justify-center px-8 text-center text-sm text-[#7A8B81]">
-              Как только появятся реальные интервалы, здесь соберется живой таймлайн дня.
+            <div className="flex h-full items-center justify-center px-8">
+              <div className="w-full max-w-md">
+                <StateCard
+                  description="Как только появятся реальные интервалы, здесь соберется живой таймлайн дня с деталями по окнам, сайтам и потокам."
+                  title="Таймлайн дня пока пуст"
+                  variant="empty"
+                />
+              </div>
             </div>
           )}
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Sparkles, X } from "lucide-react"
 
+import { StateCard } from "@/components/app/StateCard"
 import { DayTimeline } from "@/components/dashboard/DayTimeline"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { Button } from "@/components/ui/button"
@@ -232,9 +233,11 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
       <div className="space-y-5">
         {error && (
-          <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
-            {error}
-          </div>
+          <StateCard
+            description="Проверь локальную базу и состояние Tauri runtime, затем попробуй обновить экран еще раз."
+            title={error}
+            variant="error"
+          />
         )}
 
         <DayTimeline
@@ -304,9 +307,11 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
 
           <div className="mt-4 space-y-3">
             {flows.length === 0 && (
-              <div className="rounded-[20px] border border-dashed border-[#D9E5DC] bg-[#FBFDFB] px-4 py-4 text-[13px] leading-6 text-[#75877D]">
-                Потоки появятся после первых логов или после ручной группировки дня.
-              </div>
+              <StateCard
+                description="Как только появятся первые логи или будет собрана группировка дня, здесь сложится карта потоков и стримов."
+                title="Потоки пока не собраны"
+                variant="empty"
+              />
             )}
 
             {flows.map((flow) => (

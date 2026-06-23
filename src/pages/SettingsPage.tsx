@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
 import { Download, Globe, Shield, Sparkles, Trash2, Workflow } from "lucide-react"
 
+import { StateCard } from "@/components/app/StateCard"
 import { Button } from "@/components/ui/button"
 import { settingsRows } from "@/data/mock"
 import {
@@ -179,9 +180,11 @@ export function SettingsPage() {
   return (
     <div className="space-y-5">
       {error && (
-        <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
-          {error}
-        </div>
+        <StateCard
+          description="Служебный слой FocusFlow не смог сохранить или прочитать часть локальных настроек. Обычно помогает повторить действие."
+          title={error}
+          variant="error"
+        />
       )}
 
       <section className="rounded-[28px] border border-white/70 bg-[radial-gradient(circle_at_left_bottom,rgba(175,220,188,0.18),transparent_30%),linear-gradient(180deg,rgba(255,255,255,0.94)_0%,rgba(255,252,247,0.9)_100%)] px-6 py-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
@@ -321,9 +324,11 @@ export function SettingsPage() {
 
             <div className="mt-4 space-y-3">
               {stoplist.length === 0 && (
-                <div className="rounded-[20px] border border-dashed border-[#D7E4DA] bg-[#FBFDFB] px-4 py-5 text-center text-sm text-[#788981]">
-                  Стоп-лист пока пуст.
-                </div>
+                <StateCard
+                  description="Добавь сюда процессы, которые не должны попадать в лог активности."
+                  title="Стоп-лист пока пуст"
+                  variant="empty"
+                />
               )}
 
               {stoplist.map((item) => (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowRightLeft, Clock3, Focus, Sparkles } from "lucide-react"
 
+import { StateCard } from "@/components/app/StateCard"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
 import {
@@ -114,9 +115,11 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
   return (
     <div className="space-y-5">
       {error && (
-        <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
-          {error}
-        </div>
+        <StateCard
+          description="Не получилось собрать обзор по выбранным дням. Скорее всего, не дочитались локальные логи или сохраненные LLM-сводки."
+          title={error}
+          variant="error"
+        />
       )}
 
       <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
@@ -225,9 +228,11 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
 
           <div className="mt-5 space-y-3">
             {flows.length === 0 && (
-              <p className="text-sm text-[#75877D]">
-                Когда появятся сгруппированные потоки, здесь будет видно их вклад в день.
-              </p>
+              <StateCard
+                description="Когда появятся сгруппированные потоки, здесь станет видно, чем именно наполнился день и как распределилось время."
+                title="Потоки для этого дня пока не собраны"
+                variant="empty"
+              />
             )}
 
             {flows.map((flow) => (

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, ArrowRightLeft, CalendarRange, Clock3 } from "lucide-react"
 
+import { StateCard } from "@/components/app/StateCard"
 import { Heatmap } from "@/components/dashboard/Heatmap"
 import { WeekTimeline } from "@/components/dashboard/WeekTimeline"
 import { buildHistorySummary, formatMinutes } from "@/lib/activity-analytics"
@@ -98,15 +99,19 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
   return (
     <div className="space-y-4">
       {error && (
-        <div className="rounded-[20px] border border-[#F0D1D1] bg-[#FFF4F4] px-4 py-3 text-sm text-[#9C4E4E]">
-          {error}
-        </div>
+        <StateCard
+          description="Не получилось собрать недельную картину из локальных логов. Можно попробовать еще раз через пару секунд."
+          title={error}
+          variant="error"
+        />
       )}
 
       {loading && (
-        <div className="rounded-[22px] border border-white/80 bg-white/75 px-4 py-3 text-sm text-[#667A6F] shadow-[0_14px_40px_rgba(91,121,108,0.06)]">
-          Собираю недельную картину активности.
-        </div>
+        <StateCard
+          description="Подтягиваю интервалы активности и пересчитываю ритм выбранной недели."
+          title="Собираю недельную картину активности"
+          variant="loading"
+        />
       )}
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_336px]">
