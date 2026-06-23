@@ -10,11 +10,20 @@ import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
 import {
   getActivityLogs,
   getIdleLogs,
+  getSettings,
   updateIdleLog,
   type ActivityLogRecord,
   type IdleLogRecord,
 } from "@/lib/focusflow-api"
-import { buildLlmSummaryPayload } from "@/lib/llm-summary"
+import {
+  DEFAULT_LLM_SETTINGS,
+  buildFlowsFromLlmGroups,
+  buildLlmSummaryPayload,
+  readLlmSettings,
+  requestOllamaSummary,
+  type LlmProviderSettings,
+} from "@/lib/llm-summary"
+import type { FlowSummary } from "@/types"
 
 export function TodayPage() {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
@@ -23,6 +32,10 @@ export function TodayPage() {
   const [error, setError] = useState<string | null>(null)
   const [idleNote, setIdleNote] = useState("")
   const [postponedIdleIds, setPostponedIdleIds] = useState<number[]>([])
+  const [llmSettings, setLlmSettings] = useState<LlmProviderSettings>(DEFAULT_LLM_SETTINGS)
+  const [llmFlows, setLlmFlows] = useState<FlowSummary[] | null>(null)
+  const [llmLoading, setLlmLoading] = useState(false)
+  const [llmError, setLlmError] = useState<string | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
   const pendingIdleLog = useMemo(
     () =>
@@ -32,6 +45,18 @@ export function TodayPage() {
     [idleLogs, postponedIdleIds],
   )
   const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs), [idleLogs, logs])
+  const llmPayloadKey = useMemo(
+    () =>
+      [
+        llmPayload.date,
+        llmPayload.activity_count,
+        llmPayload.idle_count,
+        llmPayload.total_active_minutes,
+        llmPayload.total_idle_minutes,
+      ].join(":"),
+    [llmPayload],
+  )
+  const flows = llmFlows ?? summary.flows
 
   useEffect(() => {
     let active = true
@@ -64,6 +89,50 @@ export function TodayPage() {
       window.clearInterval(interval)
     }
   }, [])
+
+  useEffect(() => {
+    setLlmFlows(null)
+    setLlmError(null)
+  }, [llmPayloadKey])
+
+  useEffect(() => {
+    let active = true
+
+    async function loadLlmSettings() {
+      try {
+        const settings = await getSettings()
+
+        if (active) {
+          setLlmSettings(readLlmSettings(settings))
+        }
+      } catch {
+        if (active) {
+          setLlmSettings(DEFAULT_LLM_SETTINGS)
+        }
+      }
+    }
+
+    void loadLlmSettings()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  async function generateLlmSummary() {
+    setLlmLoading(true)
+    setLlmError(null)
+
+    try {
+      const groups = await requestOllamaSummary(llmPayload, llmSettings)
+      setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ Ollama"
+      setLlmError(`Ollama недоступна или модель не готова: ${message}`)
+    } finally {
+      setLlmLoading(false)
+    }
+  }
 
   async function reviewIdleLog(input: { ignored: boolean; note: string | null }) {
     if (!pendingIdleLog) {
@@ -119,18 +188,24 @@ export function TodayPage() {
           <MetricCard label="Простой" value={summary.idleTime} />
         </div>
 
-        <LlmPrepCard payload={llmPayload} />
+        <LlmPrepCard
+          error={llmError}
+          loading={llmLoading}
+          onGenerate={() => void generateLlmSummary()}
+          payload={llmPayload}
+          settings={llmSettings}
+        />
 
-        {summary.flows.length === 0 && (
+        {flows.length === 0 && (
           <div className="rounded-md border border-dashed border-zinc-200 bg-white px-4 py-8 text-center">
             <p className="text-sm font-medium">Потоки появятся после первых записей</p>
             <p className="mt-1 text-xs text-zinc-500">
-              Пока LLM не подключена, реальные активности группируются по приложениям.
+              Сначала трекер соберет реальные активности, затем их можно сгруппировать через LLM.
             </p>
           </div>
         )}
 
-        {summary.flows.map((flow) => (
+        {flows.map((flow) => (
           <FlowCard flow={flow} key={flow.name} />
         ))}
       </section>

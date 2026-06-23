@@ -51,8 +51,8 @@ export const settingsRows: SettingRow[] = [
   { label: "Язык", value: "Русский" },
   { label: "Тема", value: "Системная" },
   { label: "Автозапуск", value: "Выключен" },
-  { label: "LLM-провайдер", value: "Не настроен" },
-  { label: "Ollama", value: "localhost:11434" },
+  { label: "LLM-провайдер", value: "ollama" },
+  { label: "Ollama", value: "http://localhost:11434" },
+  { label: "LLM-модель", value: "gpt-oss:20b" },
   { label: "Экспорт", value: "JSON" },
 ]
-

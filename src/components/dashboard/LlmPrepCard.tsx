@@ -1,14 +1,30 @@
 import { useMemo, useState } from "react"
-import { Clipboard, ClipboardCheck } from "lucide-react"
+import { Clipboard, ClipboardCheck, Sparkles } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { stringifyLlmPayload, type LlmSummaryPayload } from "@/lib/llm-summary"
+import {
+  stringifyLlmPayload,
+  type LlmProviderSettings,
+  type LlmSummaryPayload,
+} from "@/lib/llm-summary"
 
 type LlmPrepCardProps = {
+  disabled?: boolean
+  error: string | null
+  loading: boolean
+  onGenerate: () => void
   payload: LlmSummaryPayload
+  settings: LlmProviderSettings
 }
 
-export function LlmPrepCard({ payload }: LlmPrepCardProps) {
+export function LlmPrepCard({
+  disabled = false,
+  error,
+  loading,
+  onGenerate,
+  payload,
+  settings,
+}: LlmPrepCardProps) {
   const [copied, setCopied] = useState(false)
   const json = useMemo(() => stringifyLlmPayload(payload), [payload])
   const totalItems = payload.activity_count + payload.idle_count
@@ -27,13 +43,21 @@ export function LlmPrepCard({ payload }: LlmPrepCardProps) {
     <section className="rounded-md border border-zinc-200 bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-zinc-200 px-4 py-3">
         <div>
-          <h2 className="text-sm font-semibold">LLM-подготовка</h2>
-          <p className="text-xs text-zinc-500">JSON для будущей группировки активностей</p>
+          <h2 className="text-sm font-semibold">LLM-группировка</h2>
+          <p className="text-xs text-zinc-500">
+            Ollama · {settings.model} · {settings.ollamaUrl}
+          </p>
         </div>
-        <Button onClick={copyPayload} size="sm" type="button" variant="outline">
-          {copied ? <ClipboardCheck className="size-4" /> : <Clipboard className="size-4" />}
-          {copied ? "Скопировано" : "JSON"}
-        </Button>
+        <div className="flex shrink-0 gap-2">
+          <Button onClick={copyPayload} size="sm" type="button" variant="outline">
+            {copied ? <ClipboardCheck className="size-4" /> : <Clipboard className="size-4" />}
+            {copied ? "Скопировано" : "JSON"}
+          </Button>
+          <Button disabled={disabled || loading || totalItems === 0} onClick={onGenerate} size="sm" type="button">
+            <Sparkles className="size-4" />
+            {loading ? "Группирую" : "Сгруппировать"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2 px-4 py-3">
@@ -43,9 +67,13 @@ export function LlmPrepCard({ payload }: LlmPrepCardProps) {
       </div>
 
       <div className="border-t border-zinc-100 px-4 py-3">
-        <p className="text-xs text-zinc-500">
-          Провайдер еще не подключен. Этот блок фиксирует входные данные для следующего шага.
-        </p>
+        {error ? (
+          <p className="text-xs text-red-600">{error}</p>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            Локальная модель получает только JSON текущего дня и возвращает стримы и потоки.
+          </p>
+        )}
       </div>
     </section>
   )

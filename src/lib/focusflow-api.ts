@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core"
 
-import { settingsRows, timeline } from "@/data/mock"
+import { timeline } from "@/data/mock"
 
 export type ActivityLogRecord = {
   id: number
@@ -48,6 +48,7 @@ export type TrackerStatusRecord = {
 let browserTrackerRunning = false
 let browserStoplist: StoplistItemRecord[] | null = null
 let browserIdleLogs: IdleLogRecord[] | null = null
+let browserSettings: SettingEntryRecord[] | null = null
 
 export async function getActivityLogs() {
   if (!isTauriRuntime()) {
@@ -101,16 +102,25 @@ export async function updateIdleLog(id: number, input: UpdateIdleLogRecord) {
 
 export async function getSettings() {
   if (!isTauriRuntime()) {
-    return settingsRows.map<SettingEntryRecord>((row) => ({
-      key: row.label,
-      value: row.value,
-    }))
+    return getBrowserSettings()
   }
 
   return invoke<SettingEntryRecord[]>("get_settings")
 }
 
 export async function setSetting(key: string, value: string) {
+  if (!isTauriRuntime()) {
+    browserSettings = getBrowserSettings().map((setting) =>
+      setting.key === key ? { ...setting, value } : setting,
+    )
+
+    if (!browserSettings.some((setting) => setting.key === key)) {
+      browserSettings.push({ key, value })
+    }
+
+    return
+  }
+
   return invoke<void>("set_setting", { key, value })
 }
 
@@ -212,6 +222,22 @@ function getBrowserIdleLogs() {
   }
 
   return browserIdleLogs
+}
+
+function getBrowserSettings() {
+  if (!browserSettings) {
+    browserSettings = [
+      { key: "language", value: "Русский" },
+      { key: "theme", value: "Системная" },
+      { key: "autostart", value: "Выключен" },
+      { key: "llm_provider", value: "ollama" },
+      { key: "ollama_url", value: "http://localhost:11434" },
+      { key: "llm_model", value: "gpt-oss:20b" },
+      { key: "export_format", value: "JSON" },
+    ]
+  }
+
+  return browserSettings
 }
 
 function mockEndTime(dateKey: string, start: string, index: number) {

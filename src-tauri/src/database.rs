@@ -355,8 +355,9 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 ('language', 'Русский'),
                 ('theme', 'Системная'),
                 ('autostart', 'Выключен'),
-                ('llm_provider', 'Не настроен'),
-                ('ollama_url', 'localhost:11434'),
+                ('llm_provider', 'ollama'),
+                ('ollama_url', 'http://localhost:11434'),
+                ('llm_model', 'gpt-oss:20b'),
                 ('export_format', 'JSON');
             ",
         )
