@@ -55,6 +55,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
   const [trackerStatus, setTrackerStatus] = useState<TrackerStatusRecord>(initialTrackerStatus)
   const [trackerBusy, setTrackerBusy] = useState(false)
   const trackerRunning = trackerStatus.running
+  const headerDate = formatHeaderDate(new Date())
 
   useEffect(() => {
     let active = true
@@ -168,9 +169,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
           <header className="flex h-16 items-center justify-between border-b border-zinc-200 bg-white px-4 sm:px-6">
             <div>
               <h1 className="text-base font-semibold sm:text-lg">{viewTitles[activeView]}</h1>
-              <p className="hidden text-sm text-zinc-500 sm:block">
-                Вторник, 23 июня 2026
-              </p>
+              <p className="hidden text-sm text-zinc-500 sm:block">{headerDate}</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -236,4 +235,16 @@ function formatIdleTime(seconds: number) {
   const restSeconds = seconds % 60
 
   return `${minutes} мин ${restSeconds} с`
+}
+
+function formatHeaderDate(date: Date) {
+  const formatter = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    weekday: "long",
+    year: "numeric",
+  })
+  const value = formatter.format(date)
+
+  return value.charAt(0).toUpperCase() + value.slice(1)
 }
