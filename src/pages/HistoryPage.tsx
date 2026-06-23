@@ -63,8 +63,8 @@ export function HistoryPage() {
         </div>
       )}
 
-      <WeekTimeline items={summary.week} />
-      <Heatmap levels={summary.heatmapLevels} totalHours={summary.totalHours} />
+      <WeekTimeline days={summary.weekDays} />
+      <Heatmap cells={summary.heatmap} months={summary.heatmapMonths} totalHours={summary.totalHours} />
     </div>
   )
 }

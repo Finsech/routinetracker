@@ -1,7 +1,15 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
-import type { FlowSummary, TimelineItem, WeekActivity } from "@/types"
+import type {
+  FlowSummary,
+  HeatmapCell,
+  HeatmapMonthLabel,
+  TimelineItem,
+  WeekActivity,
+  WeekTimelineDay,
+} from "@/types"
 
 const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
+const WEEKDAY_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
 const RAW_FLOW_NAME = "Сырые активности"
 const IDLE_FLOW_NAME = "Простой"
 const FLOW_ACCENTS: Record<string, string> = {
@@ -25,8 +33,10 @@ export type TodayActivitySummary = {
 
 export type HistoryActivitySummary = {
   week: WeekActivity[]
+  weekDays: WeekTimelineDay[]
   totalHours: number
-  heatmapLevels: number[]
+  heatmap: HeatmapCell[]
+  heatmapMonths: HeatmapMonthLabel[]
 }
 
 export function buildTodaySummary(
@@ -82,8 +92,9 @@ export function buildHistorySummary(
 
   return {
     week,
+    weekDays: buildWeekTimelineDays(logs, idleLogs, date),
     totalHours,
-    heatmapLevels: week.flatMap((item) => buildDayHeatCells(item.hours)),
+    ...buildYearHeatmap(logs, idleLogs, date),
   }
 }
 
@@ -138,6 +149,107 @@ function buildAppFlows(logs: ActivityLogRecord[]): FlowSummary[] {
       streams,
     },
   ]
+}
+
+function buildWeekTimelineDays(
+  logs: ActivityLogRecord[],
+  idleLogs: IdleLogRecord[],
+  date: Date,
+): WeekTimelineDay[] {
+  const weekStart = startOfWeekMonday(date)
+
+  return Array.from({ length: 7 }, (_, offset) => {
+    const day = new Date(weekStart)
+    day.setDate(weekStart.getDate() + offset)
+    const items = [
+      ...logs
+        .filter((log) => isSameDay(new Date(log.start_time), day))
+        .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
+        .map(toTimelineItem),
+      ...idleLogs
+        .filter((log) => !log.ignored && isSameDay(new Date(log.start_time), day))
+        .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
+        .map(toIdleTimelineItem),
+    ].sort((left, right) => left.startMinutes - right.startMinutes)
+
+    return {
+      dateKey: formatDateKey(day),
+      label: formatDayLabel(day),
+      shortLabel: WEEKDAY_SHORT[offset],
+      dayNumber: String(day.getDate()),
+      totalMinutes: items.reduce((sum, item) => sum + item.durationMinutes, 0),
+      items,
+    }
+  })
+}
+
+function buildYearHeatmap(
+  logs: ActivityLogRecord[],
+  idleLogs: IdleLogRecord[],
+  date: Date,
+): Pick<HistoryActivitySummary, "heatmap" | "heatmapMonths"> {
+  const endDate = new Date(date)
+  endDate.setHours(0, 0, 0, 0)
+
+  const startDate = new Date(endDate)
+  startDate.setDate(startDate.getDate() - 364)
+
+  const gridStart = startOfWeekSunday(startDate)
+  const gridEnd = endOfWeekSaturday(endDate)
+  const dailyMinutes = buildDailyMinuteMap(logs, idleLogs)
+  const heatmap: HeatmapCell[] = []
+  const heatmapMonths: HeatmapMonthLabel[] = []
+  const seenMonths = new Set<string>()
+
+  let cursor = new Date(gridStart)
+
+  while (cursor <= gridEnd) {
+    const weekIndex = diffDays(gridStart, cursor) / 7
+    const weekday = cursor.getDay()
+    const dateKey = formatDateKey(cursor)
+    const totalMinutes = dailyMinutes.get(dateKey) ?? 0
+
+    heatmap.push({
+      dateKey,
+      level: heatLevel(totalMinutes),
+      totalMinutes,
+      weekIndex,
+      weekday,
+    })
+
+    const monthKey = `${cursor.getFullYear()}-${cursor.getMonth()}`
+    if (cursor.getDate() <= 7 && !seenMonths.has(monthKey)) {
+      heatmapMonths.push({
+        label: cursor.toLocaleString("ru-RU", { month: "short" }).replace(".", ""),
+        weekIndex,
+      })
+      seenMonths.add(monthKey)
+    }
+
+    cursor.setDate(cursor.getDate() + 1)
+  }
+
+  return { heatmap, heatmapMonths }
+}
+
+function buildDailyMinuteMap(logs: ActivityLogRecord[], idleLogs: IdleLogRecord[]) {
+  const map = new Map<string, number>()
+
+  for (const log of logs) {
+    const key = formatDateKey(new Date(log.start_time))
+    map.set(key, (map.get(key) ?? 0) + durationMinutes(log))
+  }
+
+  for (const log of idleLogs) {
+    if (log.ignored) {
+      continue
+    }
+
+    const key = formatDateKey(new Date(log.start_time))
+    map.set(key, (map.get(key) ?? 0) + durationMinutes(log))
+  }
+
+  return map
 }
 
 function toTimelineItem(log: ActivityLogRecord): TimelineItem {
@@ -216,25 +328,65 @@ function minutesSinceMidnight(value: string) {
 }
 
 function buildLastSevenDays(date: Date) {
+  const weekStart = startOfWeekMonday(date)
+
   return Array.from({ length: 7 }, (_, index) => {
-    const day = new Date(date)
+    const day = new Date(weekStart)
+    day.setDate(weekStart.getDate() + index)
     day.setHours(0, 0, 0, 0)
-    day.setDate(day.getDate() - (6 - index))
     return day
   })
 }
 
-function buildDayHeatCells(hours: number) {
-  const level = hoursToLevel(hours)
-  return Array.from({ length: 14 }, () => level)
+function heatLevel(totalMinutes: number) {
+  if (totalMinutes <= 0) return 0
+  if (totalMinutes < 60) return 1
+  if (totalMinutes < 180) return 2
+  if (totalMinutes < 300) return 3
+  if (totalMinutes < 420) return 4
+  return 5
 }
 
-function hoursToLevel(hours: number) {
-  if (hours >= 6) return 4
-  if (hours >= 4) return 3
-  if (hours >= 2) return 2
-  if (hours > 0) return 1
-  return 0
+function startOfWeekMonday(date: Date) {
+  const result = new Date(date)
+  result.setHours(0, 0, 0, 0)
+  const day = result.getDay()
+  const diff = day === 0 ? -6 : 1 - day
+  result.setDate(result.getDate() + diff)
+  return result
+}
+
+function startOfWeekSunday(date: Date) {
+  const result = new Date(date)
+  result.setHours(0, 0, 0, 0)
+  result.setDate(result.getDate() - result.getDay())
+  return result
+}
+
+function endOfWeekSaturday(date: Date) {
+  const result = startOfWeekSunday(date)
+  result.setDate(result.getDate() + 6)
+  return result
+}
+
+function diffDays(left: Date, right: Date) {
+  return Math.round((right.getTime() - left.getTime()) / 86_400_000)
+}
+
+function formatDateKey(date: Date) {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, "0")
+  const day = String(date.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
+}
+
+function formatDayLabel(date: Date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+  })
+    .format(date)
+    .replace(".", "")
 }
 
 function isSameDay(left: Date, right: Date) {

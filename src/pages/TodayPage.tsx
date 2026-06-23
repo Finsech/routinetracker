@@ -248,16 +248,6 @@ export function TodayPage() {
                 без технического шума.
               </p>
             </div>
-            <Button
-              className="rounded-full px-4"
-              disabled={llmLoading || llmPayload.items.length === 0}
-              onClick={() => void generateLlmSummary()}
-              size="lg"
-              type="button"
-            >
-              <Sparkles className="size-4" />
-              {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
-            </Button>
           </div>
           {(llmCachedAt || llmError || loading) && (
             <p className="mt-4 text-sm text-[#73867A]">
@@ -283,55 +273,6 @@ export function TodayPage() {
           totalTime={summary.activeTime}
         />
 
-        {flows.length > 0 && (
-          <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">Потоки и стримы</p>
-                <p className="mt-2 text-sm text-[#71837A]">
-                  Клик по стриму открывает состав активности в правой панели.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {flows.map((flow) => (
-                <article
-                  className="rounded-[24px] border border-[#E2EBE4] bg-[#FBFDFB] p-4"
-                  key={flow.name}
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="size-2.5 rounded-full" style={{ background: flow.accent }} />
-                      <span className="font-medium text-[#2A4035]">{flow.name}</span>
-                    </div>
-                    <span className="text-sm text-[#687B70]">{flow.time}</span>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    {flow.streams.map((stream) => (
-                      <button
-                        className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-[#E7EFE9] bg-white px-3 py-3 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
-                        key={stream.name}
-                        onClick={() => {
-                          setSelectedStream({ flow, stream })
-                          setSelectedTimelineItem(null)
-                        }}
-                        type="button"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-[#263C31]">{stream.name}</p>
-                          <p className="mt-1 text-xs text-[#788981]">{stream.activities} активностей</p>
-                        </div>
-                        <span className="shrink-0 text-sm text-[#617469]">{stream.time}</span>
-                      </button>
-                    ))}
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
-        )}
       </div>
 
       <aside className="space-y-5">
@@ -353,6 +294,71 @@ export function TodayPage() {
           ) : selectedStream ? (
             <StreamInspector selectedStream={selectedStream} onReset={() => setSelectedStream(null)} />
           ) : null}
+        </section>
+
+        <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="font-['Georgia'] text-[1.55rem] text-[#24382F]">Потоки и стримы</p>
+              <p className="mt-2 text-sm text-[#71837A]">
+                Здесь живет группировка дня и быстрый доступ к стримам.
+              </p>
+            </div>
+          </div>
+
+          <Button
+            className="mt-5 w-full rounded-full"
+            disabled={llmLoading || llmPayload.items.length === 0}
+            onClick={() => void generateLlmSummary()}
+            size="lg"
+            type="button"
+          >
+            <Sparkles className="size-4" />
+            {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
+          </Button>
+
+          <div className="mt-5 space-y-4">
+            {flows.length === 0 && (
+              <p className="text-sm text-[#75877D]">
+                Потоки появятся после первых логов или после ручной группировки дня.
+              </p>
+            )}
+
+            {flows.map((flow) => (
+              <article
+                className="rounded-[24px] border border-[#E2EBE4] bg-[#FBFDFB] p-4"
+                key={flow.name}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2.5 rounded-full" style={{ background: flow.accent }} />
+                    <span className="font-medium text-[#2A4035]">{flow.name}</span>
+                  </div>
+                  <span className="text-sm text-[#687B70]">{flow.time}</span>
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {flow.streams.map((stream) => (
+                    <button
+                      className="flex w-full items-center justify-between gap-3 rounded-[18px] border border-[#E7EFE9] bg-white px-3 py-3 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
+                      key={stream.name}
+                      onClick={() => {
+                        setSelectedStream({ flow, stream })
+                        setSelectedTimelineItem(null)
+                      }}
+                      type="button"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#263C31]">{stream.name}</p>
+                        <p className="mt-1 text-xs text-[#788981]">{stream.activities} активностей</p>
+                      </div>
+                      <span className="shrink-0 text-sm text-[#617469]">{stream.time}</span>
+                    </button>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
         </section>
       </aside>
 
@@ -414,6 +420,15 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
   )
 }
 
+function InspectorMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <p className="text-sm text-[#73867A]">{label}</p>
+      <p className="mt-2 text-[1.05rem] font-medium text-[#2B4236]">{value}</p>
+    </div>
+  )
+}
+
 function TimelineInspector({
   item,
   onReset,
@@ -433,11 +448,11 @@ function TimelineInspector({
       </button>
       <p className="mt-4 font-['Georgia'] text-[1.7rem] leading-tight text-[#24382F]">{item.label}</p>
       <div className="mt-4 space-y-3">
-        <InsightMetric label="Время" value={`${item.start} - ${item.end}`} />
-        <InsightMetric label="Длительность" value={formatMinutes(item.durationMinutes)} />
-        <InsightMetric label="Поток" value={item.flow} />
-        <InsightMetric label="Источник" value={item.app} />
-        {item.url && <InsightMetric label="URL" value={item.url} />}
+        <InspectorMetric label="Время" value={`${item.start} - ${item.end}`} />
+        <InspectorMetric label="Длительность" value={formatMinutes(item.durationMinutes)} />
+        <InspectorMetric label="Поток" value={item.flow} />
+        <InspectorMetric label="Источник" value={item.app} />
+        {item.url && <InspectorMetric label="URL" value={item.url} />}
       </div>
     </div>
   )

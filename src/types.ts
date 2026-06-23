@@ -53,3 +53,25 @@ export type SettingRow = {
   label: string
   value: string
 }
+
+export type WeekTimelineDay = {
+  dateKey: string
+  label: string
+  shortLabel: string
+  dayNumber: string
+  totalMinutes: number
+  items: TimelineItem[]
+}
+
+export type HeatmapCell = {
+  dateKey: string
+  level: number
+  totalMinutes: number
+  weekIndex: number
+  weekday: number
+}
+
+export type HeatmapMonthLabel = {
+  label: string
+  weekIndex: number
+}

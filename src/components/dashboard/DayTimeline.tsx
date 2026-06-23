@@ -90,6 +90,7 @@ export function DayTimeline({
               const height = Math.max(((end - start) / DAY_MINUTES) * 100, 4.6)
               const itemId = buildTimelineId(item, index)
               const selected = selectedItemId === itemId
+              const compact = item.durationMinutes < 50
 
               return (
                 <button
@@ -100,7 +101,7 @@ export function DayTimeline({
                   onClick={() => onItemSelect?.(item)}
                   style={{
                     top: `${top}%`,
-                    minHeight: "50px",
+                    minHeight: compact ? "58px" : "82px",
                     height: `${height}%`,
                   }}
                   type="button"
@@ -112,16 +113,18 @@ export function DayTimeline({
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 pl-2">
                       <p className="truncate text-[15px] font-medium text-[#203328]">{item.label}</p>
-                      <p className="mt-1 truncate text-sm text-[#708178]">
-                        {item.app}
-                        {item.url ? ` · ${formatUrl(item.url)}` : ""}
-                      </p>
+                      {!compact && (
+                        <p className="mt-1 truncate text-sm text-[#708178]">
+                          {item.app}
+                          {item.url ? ` · ${formatUrl(item.url)}` : ""}
+                        </p>
+                      )}
                     </div>
                     <div className="shrink-0 text-right">
                       <p className="text-sm font-medium text-[#30463A]">
                         {item.start} - {item.end}
                       </p>
-                      <p className="mt-1 text-xs text-[#7C8C83]">{item.flow}</p>
+                      {!compact && <p className="mt-1 text-xs text-[#7C8C83]">{item.flow}</p>}
                     </div>
                   </div>
                 </button>
