@@ -46,15 +46,24 @@ type AppShellProps = {
   activeView: View
   children: ReactNode
   onViewChange: (view: View) => void
+  selectedDate: Date
+  onSelectedDateChange: (date: Date) => void
 }
 
-export function AppShell({ activeView, children, onViewChange }: AppShellProps) {
+export function AppShell({
+  activeView,
+  children,
+  onViewChange,
+  onSelectedDateChange,
+  selectedDate,
+}: AppShellProps) {
   const [trackerStatus, setTrackerStatus] = useState<TrackerStatusRecord>(initialTrackerStatus)
   const [trackerBusy, setTrackerBusy] = useState(false)
   const trackerRunning = trackerStatus.running
-  const headerDate = formatHeaderDate(new Date())
+  const headerDate = formatHeaderDate(selectedDate, activeView)
   const idleState = formatIdleTime(trackerStatus.idle_seconds)
   const currentActivity = formatCurrentActivity(trackerStatus)
+  const showDateControls = activeView !== "settings"
 
   useEffect(() => {
     let active = true
@@ -96,6 +105,25 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
     } finally {
       setTrackerBusy(false)
     }
+  }
+
+  function stepDate(direction: -1 | 1) {
+    const next = new Date(selectedDate)
+
+    if (activeView === "week") {
+      next.setDate(next.getDate() + direction * 7)
+    } else {
+      next.setDate(next.getDate() + direction)
+    }
+
+    next.setHours(0, 0, 0, 0)
+    onSelectedDateChange(next)
+  }
+
+  function resetToToday() {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    onSelectedDateChange(today)
   }
 
   return (
@@ -144,7 +172,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              <div className="hidden rounded-full border border-[#E4ECE6] bg-white/80 px-4 py-2 text-sm text-[#6A7C72] xl:block">
+              <div className="hidden max-w-[320px] rounded-full border border-[#E4ECE6] bg-white/80 px-4 py-2 text-sm text-[#6A7C72] xl:block">
                 {currentActivity}
               </div>
               <div className="rounded-full border border-[#E1E8E2] bg-white/82 px-3 py-2 text-sm text-[#63756A]">
@@ -160,18 +188,38 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
                 {trackerRunning ? <Square className="size-4" /> : <Play className="size-4" />}
                 {trackerRunning ? "Пауза" : "Старт"}
               </Button>
-              <div className="flex items-center gap-2 rounded-full border border-[#E5ECE6] bg-white/82 px-2 py-2">
-                <Button aria-label="Предыдущий день" size="icon-sm" variant="ghost">
-                  <ChevronLeft className="size-4" />
-                </Button>
-                <Button className="rounded-full px-4" size="sm" variant="outline">
-                  <CalendarDays className="size-4" />
-                  Сегодня
-                </Button>
-                <Button aria-label="Следующий день" size="icon-sm" variant="ghost">
-                  <ChevronRight className="size-4" />
-                </Button>
-              </div>
+              {showDateControls && (
+                <div className="flex items-center gap-2 rounded-full border border-[#E5ECE6] bg-white/82 px-2 py-2">
+                  <Button
+                    aria-label="Предыдущий период"
+                    onClick={() => stepDate(-1)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </Button>
+                  <Button
+                    className="rounded-full px-4"
+                    onClick={resetToToday}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <CalendarDays className="size-4" />
+                    Сегодня
+                  </Button>
+                  <Button
+                    aria-label="Следующий период"
+                    onClick={() => stepDate(1)}
+                    size="icon-sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    <ChevronRight className="size-4" />
+                  </Button>
+                </div>
+              )}
             </div>
           </header>
 
@@ -182,6 +230,7 @@ export function AppShell({ activeView, children, onViewChange }: AppShellProps) 
                 <Button
                   key={item.id}
                   onClick={() => onViewChange(item.id)}
+                  type="button"
                   variant={activeView === item.id ? "default" : "outline"}
                 >
                   <Icon className="size-4" />
@@ -229,7 +278,14 @@ function formatIdleTime(seconds: number) {
   return `Простой ${minutes} мин ${restSeconds} с`
 }
 
-function formatHeaderDate(date: Date) {
+function formatHeaderDate(date: Date, view: View) {
+  if (view === "week") {
+    const start = startOfWeekMonday(date)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    return `${formatShortDate(start)} - ${formatShortDate(end)}`
+  }
+
   const formatter = new Intl.DateTimeFormat("ru-RU", {
     day: "numeric",
     month: "long",
@@ -239,4 +295,20 @@ function formatHeaderDate(date: Date) {
   const value = formatter.format(date)
 
   return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function startOfWeekMonday(date: Date) {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  const weekday = next.getDay()
+  const shift = weekday === 0 ? -6 : 1 - weekday
+  next.setDate(next.getDate() + shift)
+  return next
+}
+
+function formatShortDate(date: Date) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+  }).format(date)
 }

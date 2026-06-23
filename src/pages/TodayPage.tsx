@@ -33,7 +33,7 @@ type SelectedStream = {
   stream: FlowStream
 }
 
-export function TodayPage() {
+export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
   const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,7 +47,7 @@ export function TodayPage() {
   const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
-  const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
+  const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const pendingIdleLog = useMemo(
     () =>
       idleLogs.find(
@@ -55,7 +55,7 @@ export function TodayPage() {
       ) ?? null,
     [idleLogs, postponedIdleIds],
   )
-  const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs), [idleLogs, logs])
+  const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const llmCacheSignature = useMemo(
     () => buildLlmCacheSignature(llmPayload, llmSettings),
     [llmPayload, llmSettings],

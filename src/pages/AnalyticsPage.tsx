@@ -24,7 +24,7 @@ import type { FlowSummary, TimelineItem } from "@/types"
 
 const ANALYTICS_COLORS = ["#7CB39A", "#86B8E5", "#B89BE8", "#F2B880", "#D97D6B"]
 
-export function AnalyticsPage() {
+export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
   const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [llmSummaries, setLlmSummaries] = useState<LlmSummaryRecord[]>([])
@@ -55,7 +55,7 @@ export function AnalyticsPage() {
         setError(null)
 
         const availableDateKeys = buildAvailableDateKeys(nextLogs, nextIdleLogs)
-        setSelectedDateKey((current) => current ?? availableDateKeys[0] ?? formatDateKey(new Date()))
+        setSelectedDateKey((current) => current ?? availableDateKeys[0] ?? formatDateKey(selectedDate))
       } catch {
         if (active) {
           setError("Не удалось собрать аналитику по дням")
@@ -70,22 +70,26 @@ export function AnalyticsPage() {
       active = false
       window.clearInterval(interval)
     }
-  }, [])
+  }, [selectedDate])
 
   const availableDateKeys = useMemo(
     () => buildAvailableDateKeys(logs, idleLogs),
     [idleLogs, logs],
   )
-  const effectiveDateKey = selectedDateKey ?? availableDateKeys[0] ?? formatDateKey(new Date())
-  const selectedDate = useMemo(() => parseDateKey(effectiveDateKey), [effectiveDateKey])
+  const effectiveDateKey = selectedDateKey ?? availableDateKeys[0] ?? formatDateKey(selectedDate)
+  const selectedDay = useMemo(() => parseDateKey(effectiveDateKey), [effectiveDateKey])
   const summary = useMemo(
-    () => buildTodaySummary(logs, idleLogs, selectedDate),
-    [idleLogs, logs, selectedDate],
+    () => buildTodaySummary(logs, idleLogs, selectedDay),
+    [idleLogs, logs, selectedDay],
   )
   const llmSettings = useMemo(() => readLlmSettings(settings), [settings])
+
+  useEffect(() => {
+    setSelectedDateKey(formatDateKey(selectedDate))
+  }, [selectedDate])
   const llmPayload = useMemo(
-    () => buildLlmSummaryPayload(logs, idleLogs, selectedDate),
-    [idleLogs, logs, selectedDate],
+    () => buildLlmSummaryPayload(logs, idleLogs, selectedDay),
+    [idleLogs, logs, selectedDay],
   )
   const llmCacheSignature = useMemo(
     () => buildLlmCacheSignature(llmPayload, llmSettings),

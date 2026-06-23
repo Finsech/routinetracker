@@ -17,14 +17,14 @@ type SelectedWeekItem = {
   item: TimelineItem
 }
 
-export function HistoryPage() {
+export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
   const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedDayKey, setSelectedDayKey] = useState<string | null>(null)
   const [selectedItem, setSelectedItem] = useState<SelectedWeekItem | null>(null)
-  const summary = useMemo(() => buildHistorySummary(logs, idleLogs), [idleLogs, logs])
+  const summary = useMemo(() => buildHistorySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
 
   useEffect(() => {
     let active = true

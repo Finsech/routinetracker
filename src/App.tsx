@@ -9,15 +9,27 @@ import type { View } from "@/types"
 
 function App() {
   const [view, setView] = useState<View>("today")
+  const [selectedDate, setSelectedDate] = useState(() => startOfDay(new Date()))
 
   return (
-    <AppShell activeView={view} onViewChange={setView}>
-      {view === "today" && <TodayPage />}
-      {view === "week" && <HistoryPage />}
-      {view === "analytics" && <AnalyticsPage />}
+    <AppShell
+      activeView={view}
+      onSelectedDateChange={setSelectedDate}
+      onViewChange={setView}
+      selectedDate={selectedDate}
+    >
+      {view === "today" && <TodayPage selectedDate={selectedDate} />}
+      {view === "week" && <HistoryPage selectedDate={selectedDate} />}
+      {view === "analytics" && <AnalyticsPage selectedDate={selectedDate} />}
       {view === "settings" && <SettingsPage />}
     </AppShell>
   )
 }
 
 export default App
+
+function startOfDay(date: Date) {
+  const next = new Date(date)
+  next.setHours(0, 0, 0, 0)
+  return next
+}
