@@ -1,6 +1,8 @@
+mod browser_bridge;
 mod database;
 mod tracker;
 
+use browser_bridge::BrowserBridge;
 use database::Database;
 use tauri::Manager;
 use tracker::Tracker;
@@ -17,12 +19,21 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             let database = Database::open(app.handle())?;
+            let browser_bridge = BrowserBridge::default();
+            if let Err(error) = browser_bridge.start() {
+                eprintln!("Не удалось запустить browser bridge: {error}");
+            }
             app.manage(database);
+            app.manage(browser_bridge);
             app.manage(Tracker::default());
             Ok(())
         })
         .on_window_event(|window, event| {
             if matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                let browser_bridge = window.state::<BrowserBridge>();
+                if let Err(error) = browser_bridge.stop() {
+                    eprintln!("Не удалось остановить browser bridge при закрытии окна: {error}");
+                }
                 let tracker = window.state::<Tracker>();
                 if let Err(error) = tracker.stop() {
                     eprintln!("Не удалось остановить tracker при закрытии окна: {error}");
@@ -31,6 +42,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            browser_bridge::get_browser_bridge_status,
             database::get_activity_logs,
             database::create_activity_log,
             database::get_idle_logs,

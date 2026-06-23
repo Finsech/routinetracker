@@ -62,6 +62,17 @@ export type TrackerStatusRecord = {
   idle_seconds: number
 }
 
+export type BrowserBridgeStatusRecord = {
+  running: boolean
+  port: number
+  last_activity: {
+    browser: string | null
+    url: string
+    title: string | null
+    observed_at: string
+  } | null
+}
+
 export type FocusFlowExport = {
   app_name: "FocusFlow"
   schema_version: 1
@@ -290,6 +301,18 @@ export async function getTrackingStatus() {
   }
 
   return invoke<TrackerStatusRecord>("get_tracking_status")
+}
+
+export async function getBrowserBridgeStatus() {
+  if (!isTauriRuntime()) {
+    return {
+      running: false,
+      port: 17653,
+      last_activity: null,
+    }
+  }
+
+  return invoke<BrowserBridgeStatusRecord>("get_browser_bridge_status")
 }
 
 function isTauriRuntime() {

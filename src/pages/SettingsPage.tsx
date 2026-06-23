@@ -6,10 +6,12 @@ import { settingsRows } from "@/data/mock"
 import {
   addStoplistItem,
   exportFocusFlowData,
+  getBrowserBridgeStatus,
   getSettings,
   getStoplist,
   removeStoplistItem,
   setSetting,
+  type BrowserBridgeStatusRecord,
   type SettingEntryRecord,
   type StoplistItemRecord,
 } from "@/lib/focusflow-api"
@@ -40,6 +42,7 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingLlm, setSavingLlm] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [browserBridgeStatus, setBrowserBridgeStatus] = useState<BrowserBridgeStatusRecord | null>(null)
   const visibleRows = rows.filter((row) => !llmSettingLabels.has(row.label))
 
   useEffect(() => {
@@ -47,7 +50,11 @@ export function SettingsPage() {
 
     async function loadSettings() {
       try {
-        const [settings, stoplistItems] = await Promise.all([getSettings(), getStoplist()])
+        const [settings, stoplistItems, bridgeStatus] = await Promise.all([
+          getSettings(),
+          getStoplist(),
+          getBrowserBridgeStatus(),
+        ])
 
         if (!isMounted) {
           return
@@ -58,6 +65,7 @@ export function SettingsPage() {
           setLlmSettings(readLlmSettings(settings))
         }
         setStoplist(stoplistItems)
+        setBrowserBridgeStatus(bridgeStatus)
         setError(null)
       } catch {
         if (isMounted) {
@@ -71,6 +79,24 @@ export function SettingsPage() {
 
     return () => {
       isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    const intervalId = window.setInterval(() => {
+      void getBrowserBridgeStatus()
+        .then((bridgeStatus) => {
+          if (isMounted) {
+            setBrowserBridgeStatus(bridgeStatus)
+          }
+        })
+        .catch(() => undefined)
+    }, 3000)
+
+    return () => {
+      isMounted = false
+      window.clearInterval(intervalId)
     }
   }, [])
 
@@ -177,6 +203,31 @@ export function SettingsPage() {
             <Download className="size-4" data-icon="inline-start" />
             {exporting ? "Готовлю" : "Скачать JSON"}
           </Button>
+        </div>
+      </section>
+
+      <section className="rounded-md border border-zinc-200 bg-white">
+        <div className="border-b border-zinc-200 px-4 py-3">
+          <h2 className="text-sm font-semibold">Браузер</h2>
+          <p className="text-xs text-zinc-500">Локальный мост для получения URL активной вкладки</p>
+        </div>
+        <div className="divide-y divide-zinc-100">
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <span className="text-sm text-zinc-600">Статус</span>
+            <span className="text-sm font-medium">
+              {browserBridgeStatus?.running ? "Работает" : "Не запущен"}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-4 px-4 py-3">
+            <span className="text-sm text-zinc-600">Порт</span>
+            <span className="text-sm font-medium">{browserBridgeStatus?.port ?? 17653}</span>
+          </div>
+          <div className="grid gap-1 px-4 py-3">
+            <span className="text-sm text-zinc-600">Последняя вкладка</span>
+            <span className="truncate text-sm font-medium">
+              {browserBridgeStatus?.last_activity?.url ?? "Нет данных от расширения"}
+            </span>
+          </div>
         </div>
       </section>
 

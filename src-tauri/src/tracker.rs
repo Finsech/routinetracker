@@ -1,3 +1,4 @@
+use crate::browser_bridge::BrowserBridge;
 use crate::database::{Database, NewActivityLog, NewIdleLog, StoplistItem};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
 use serde::Serialize;
@@ -167,6 +168,8 @@ fn tracking_loop(
 
         if should_refresh_snapshot(&mut last_snapshot_poll) {
             if let Some(snapshot) = read_active_window() {
+                let snapshot = enrich_browser_snapshot(&app, snapshot);
+
                 if is_stoplisted(&app, &snapshot) {
                     close_session(&app, current.take());
                     set_current_snapshot(&current_snapshot, None);
@@ -229,6 +232,20 @@ fn stoplist_matches(item: &StoplistItem, snapshot: &WindowSnapshot) -> bool {
             .unwrap_or(false),
         _ => false,
     }
+}
+
+fn enrich_browser_snapshot(app: &AppHandle, mut snapshot: WindowSnapshot) -> WindowSnapshot {
+    let browser_bridge = app.state::<BrowserBridge>();
+
+    if let Some(activity) = browser_bridge.latest_for_browser(&snapshot.app_name) {
+        snapshot.url = Some(activity.url);
+
+        if snapshot.window_title.is_none() {
+            snapshot.window_title = activity.title;
+        }
+    }
+
+    snapshot
 }
 
 fn close_session(app: &AppHandle, session: Option<ActiveSession>) {
