@@ -16,6 +16,13 @@ const FLOW_ACCENTS: Record<string, string> = {
   [RAW_FLOW_NAME]: "#6EA88F",
   [IDLE_FLOW_NAME]: "#D9A66C",
 }
+const APP_ACCENTS: Array<{ match: RegExp; color: string }> = [
+  { match: /code|cursor|visual studio|vscode/i, color: "#68A67B" },
+  { match: /notion/i, color: "#7C8F66" },
+  { match: /browser|chrome|edge|firefox|opera/i, color: "#7FA8D8" },
+  { match: /figma/i, color: "#B792D9" },
+  { match: /slack|telegram|discord|gmail|mail|outlook/i, color: "#E3A36C" },
+]
 
 type TimeRangeRecord = {
   start_time: string
@@ -254,6 +261,7 @@ function buildDailyMinuteMap(logs: ActivityLogRecord[], idleLogs: IdleLogRecord[
 
 function toTimelineItem(log: ActivityLogRecord): TimelineItem {
   const minutes = durationMinutes(log)
+  const accent = accentForActivity(log)
 
   return {
     start: formatClock(log.start_time),
@@ -261,7 +269,7 @@ function toTimelineItem(log: ActivityLogRecord): TimelineItem {
     label: log.window_title || log.url || log.app_name,
     app: log.app_name,
     flow: RAW_FLOW_NAME,
-    accent: FLOW_ACCENTS[RAW_FLOW_NAME],
+    accent,
     durationMinutes: minutes,
     startMinutes: minutesSinceMidnight(log.start_time),
     endMinutes: minutesSinceMidnight(log.end_time),
@@ -286,6 +294,11 @@ function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
     kind: "idle",
     url: null,
   }
+}
+
+function accentForActivity(log: ActivityLogRecord) {
+  const haystack = `${log.app_name} ${log.window_title ?? ""} ${log.url ?? ""}`
+  return APP_ACCENTS.find((entry) => entry.match.test(haystack))?.color ?? FLOW_ACCENTS[RAW_FLOW_NAME]
 }
 
 function toFlowStreamActivity(log: ActivityLogRecord) {

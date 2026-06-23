@@ -74,12 +74,19 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
                 const top = (start / DAY_MINUTES) * 100
                 const height = Math.max(((end - start) / DAY_MINUTES) * 100, 2.8)
                 const compact = item.durationMinutes < 40
+                const backgroundColor = item.kind === "idle" ? "#FFF6EA" : tint(item.accent, 0.16)
 
                 return (
                   <div
-                    className="absolute left-2 right-2 overflow-hidden rounded-[16px] border border-white/80 bg-white/94 px-2.5 py-2 shadow-[0_8px_18px_rgba(110,130,118,0.08)]"
+                    className="absolute left-2 right-2 overflow-hidden rounded-[16px] border border-white/80 px-2.5 py-2 shadow-[0_8px_18px_rgba(110,130,118,0.08)]"
                     key={`${day.dateKey}-${item.startMinutes}-${index}`}
-                    style={{ top: `${top}%`, minHeight: compact ? "34px" : "54px", height: `${height}%` }}
+                    style={{
+                      backgroundColor,
+                      top: `${top}%`,
+                      minHeight: compact ? "30px" : "48px",
+                      height: `${height}%`,
+                      zIndex: index + 1,
+                    }}
                   >
                     <span
                       className="absolute inset-y-0 left-0 w-1 rounded-l-[16px]"
@@ -102,4 +109,18 @@ export function WeekTimeline({ days }: WeekTimelineProps) {
       </div>
     </section>
   )
+}
+
+function tint(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "")
+  const value = normalized.length === 3
+    ? normalized
+        .split("")
+        .map((char) => `${char}${char}`)
+        .join("")
+    : normalized
+  const red = parseInt(value.slice(0, 2), 16)
+  const green = parseInt(value.slice(2, 4), 16)
+  const blue = parseInt(value.slice(4, 6), 16)
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }

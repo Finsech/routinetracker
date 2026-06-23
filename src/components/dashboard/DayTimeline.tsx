@@ -91,18 +91,21 @@ export function DayTimeline({
               const itemId = buildTimelineId(item, index)
               const selected = selectedItemId === itemId
               const compact = item.durationMinutes < 50
+              const backgroundColor = item.kind === "idle" ? "#FFF6EA" : tint(item.accent, 0.14)
 
               return (
                 <button
-                  className={`absolute left-3 right-3 overflow-hidden rounded-[20px] border bg-white/94 px-4 py-3 text-left shadow-[0_10px_24px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_28px_rgba(110,130,118,0.12)] ${
+                  className={`absolute left-3 right-3 overflow-hidden rounded-[20px] border px-4 py-3 text-left shadow-[0_10px_24px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_28px_rgba(110,130,118,0.12)] ${
                     selected ? "border-[#8BB79E] ring-2 ring-[#CBE3D4]" : "border-white/80"
                   }`}
                   key={itemId}
                   onClick={() => onItemSelect?.(item)}
                   style={{
+                    backgroundColor,
                     top: `${top}%`,
-                    minHeight: compact ? "58px" : "82px",
+                    minHeight: compact ? "52px" : "74px",
                     height: `${height}%`,
+                    zIndex: selected ? 20 : index + 1,
                   }}
                   type="button"
                 >
@@ -151,4 +154,18 @@ function formatUrl(value: string) {
   } catch {
     return value
   }
+}
+
+function tint(hex: string, alpha: number) {
+  const normalized = hex.replace("#", "")
+  const value = normalized.length === 3
+    ? normalized
+        .split("")
+        .map((char) => `${char}${char}`)
+        .join("")
+    : normalized
+  const red = parseInt(value.slice(0, 2), 16)
+  const green = parseInt(value.slice(2, 4), 16)
+  const blue = parseInt(value.slice(4, 6), 16)
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
 }
