@@ -28,7 +28,12 @@ import {
   serializeLlmGroups,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
-import type { FlowSummary } from "@/types"
+import type { FlowStream, FlowSummary } from "@/types"
+
+type SelectedStream = {
+  flow: FlowSummary
+  stream: FlowStream
+}
 
 export function TodayPage() {
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
@@ -42,6 +47,7 @@ export function TodayPage() {
   const [llmLoading, setLlmLoading] = useState(false)
   const [llmError, setLlmError] = useState<string | null>(null)
   const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
+  const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs), [idleLogs, logs])
   const pendingIdleLog = useMemo(
     () =>
@@ -255,7 +261,11 @@ export function TodayPage() {
         )}
 
         {flows.map((flow) => (
-          <FlowCard flow={flow} key={flow.name} />
+          <FlowCard
+            flow={flow}
+            key={flow.name}
+            onStreamSelect={(nextFlow, stream) => setSelectedStream({ flow: nextFlow, stream })}
+          />
         ))}
       </section>
 
@@ -274,6 +284,73 @@ export function TodayPage() {
           }
         />
       )}
+
+      {selectedStream && (
+        <StreamDetailsDialog
+          selectedStream={selectedStream}
+          onClose={() => setSelectedStream(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+type StreamDetailsDialogProps = {
+  selectedStream: SelectedStream
+  onClose: () => void
+}
+
+function StreamDetailsDialog({ selectedStream, onClose }: StreamDetailsDialogProps) {
+  const details = selectedStream.stream.details ?? []
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/35 px-4">
+      <section className="relative max-h-[80vh] w-full max-w-xl overflow-hidden rounded-md border border-zinc-200 bg-white shadow-xl">
+        <Button
+          aria-label="Закрыть"
+          className="absolute right-3 top-3"
+          onClick={onClose}
+          size="icon-sm"
+          type="button"
+          variant="ghost"
+        >
+          <X className="size-4" />
+        </Button>
+
+        <div className="border-b border-zinc-200 px-4 py-3 pr-12">
+          <div className="flex items-center gap-2">
+            <span className="size-2.5 rounded-full" style={{ background: selectedStream.flow.accent }} />
+            <p className="text-xs text-zinc-500">{selectedStream.flow.name}</p>
+          </div>
+          <h2 className="mt-1 text-sm font-semibold">{selectedStream.stream.name}</h2>
+          <p className="mt-1 text-xs text-zinc-500">
+            {selectedStream.stream.time} · {selectedStream.stream.activities} активностей
+          </p>
+        </div>
+
+        <div className="max-h-[56vh] overflow-y-auto divide-y divide-zinc-100">
+          {details.length === 0 && (
+            <div className="px-4 py-6 text-center text-sm text-zinc-500">
+              Детали для этого стрима пока не сохранены
+            </div>
+          )}
+
+          {details.map((activity, index) => (
+            <div className="grid gap-1 px-4 py-3" key={`${activity.start}-${activity.app}-${index}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{activity.label}</p>
+                  <p className="mt-1 text-xs text-zinc-500">{activity.app}</p>
+                </div>
+                <span className="shrink-0 text-xs font-medium text-zinc-600">{activity.duration}</span>
+              </div>
+              <p className="text-xs text-zinc-500">
+                {activity.start} - {activity.end}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }

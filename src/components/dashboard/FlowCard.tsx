@@ -1,10 +1,11 @@
-import type { FlowSummary } from "@/types"
+import type { FlowStream, FlowSummary } from "@/types"
 
 type FlowCardProps = {
   flow: FlowSummary
+  onStreamSelect?: (flow: FlowSummary, stream: FlowStream) => void
 }
 
-export function FlowCard({ flow }: FlowCardProps) {
+export function FlowCard({ flow, onStreamSelect }: FlowCardProps) {
   return (
     <article className="rounded-md border border-zinc-200 bg-white">
       <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3">
@@ -19,6 +20,7 @@ export function FlowCard({ flow }: FlowCardProps) {
           <button
             className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-zinc-50"
             key={stream.name}
+            onClick={() => onStreamSelect?.(flow, stream)}
             type="button"
           >
             <div className="min-w-0">
@@ -32,4 +34,3 @@ export function FlowCard({ flow }: FlowCardProps) {
     </article>
   )
 }
-

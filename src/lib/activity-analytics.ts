@@ -103,12 +103,16 @@ function buildAppFlows(logs: ActivityLogRecord[]): FlowSummary[] {
     return []
   }
 
-  const appMap = new Map<string, { minutes: number; activities: number }>()
+  const appMap = new Map<
+    string,
+    { minutes: number; activities: number; details: FlowSummary["streams"][number]["details"] }
+  >()
 
   for (const log of logs) {
-    const entry = appMap.get(log.app_name) ?? { minutes: 0, activities: 0 }
+    const entry = appMap.get(log.app_name) ?? { minutes: 0, activities: 0, details: [] }
     entry.minutes += durationMinutes(log)
     entry.activities += 1
+    entry.details?.push(toFlowStreamActivity(log))
     appMap.set(log.app_name, entry)
   }
 
@@ -118,6 +122,7 @@ function buildAppFlows(logs: ActivityLogRecord[]): FlowSummary[] {
       name: appName,
       time: formatMinutes(data.minutes),
       activities: data.activities,
+      details: data.details,
     }))
 
   return [
@@ -151,6 +156,18 @@ function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
     app: "Idle",
     flow: "Уточнить",
     size: heightClass(minutes),
+  }
+}
+
+function toFlowStreamActivity(log: ActivityLogRecord) {
+  const minutes = durationMinutes(log)
+
+  return {
+    app: log.app_name,
+    label: log.window_title || log.url || log.app_name,
+    start: formatClock(log.start_time),
+    end: formatClock(log.end_time),
+    duration: formatMinutes(minutes),
   }
 }
 

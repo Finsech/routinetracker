@@ -1,5 +1,5 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
-import type { FlowSummary } from "@/types"
+import type { FlowStreamActivity, FlowSummary } from "@/types"
 
 type TimeRangeRecord = {
   start_time: string
@@ -218,14 +218,19 @@ export function buildFlowsFromLlmGroups(
   groups: LlmSummaryGroup[],
 ): FlowSummary[] {
   const itemsByIndex = new Map(payload.items.map((item) => [item.index, item]))
-  const flows = new Map<string, Map<string, { minutes: number; activities: number }>>()
+  const flows = new Map<
+    string,
+    Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>
+  >()
   const usedIndexes = new Set<number>()
 
   for (const group of groups) {
     const flowName = group.flow_name.trim() || "Рутина"
     const streamName = group.stream_name.trim() || "Без названия"
-    const flow = flows.get(flowName) ?? new Map<string, { minutes: number; activities: number }>()
-    const stream = flow.get(streamName) ?? { minutes: 0, activities: 0 }
+    const flow =
+      flows.get(flowName) ??
+      new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
+    const stream = flow.get(streamName) ?? { minutes: 0, activities: 0, details: [] }
 
     for (const index of group.activities) {
       const item = itemsByIndex.get(index)
@@ -236,6 +241,7 @@ export function buildFlowsFromLlmGroups(
 
       stream.minutes += item.duration_minutes
       stream.activities += 1
+      stream.details.push(toFlowStreamActivity(item))
       usedIndexes.add(index)
     }
 
@@ -247,12 +253,19 @@ export function buildFlowsFromLlmGroups(
 
   const missedItems = payload.items.filter((item) => !usedIndexes.has(item.index))
   if (missedItems.length > 0) {
-    const flow = flows.get("Рутина") ?? new Map<string, { minutes: number; activities: number }>()
-    const stream = flow.get("Не распознано") ?? { minutes: 0, activities: 0 }
+    const flow =
+      flows.get("Рутина") ??
+      new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
+    const stream = flow.get("Не распознано") ?? {
+      minutes: 0,
+      activities: 0,
+      details: [],
+    }
 
     for (const item of missedItems) {
       stream.minutes += item.duration_minutes
       stream.activities += 1
+      stream.details.push(toFlowStreamActivity(item))
     }
 
     flow.set("Не распознано", stream)
@@ -266,6 +279,7 @@ export function buildFlowsFromLlmGroups(
           name: streamName,
           time: formatMinutes(data.minutes),
           activities: data.activities,
+          details: data.details,
         }))
         .sort((left, right) => parseDurationText(right.time) - parseDurationText(left.time))
       const minutes = [...streams.values()].reduce((sum, stream) => sum + stream.minutes, 0)
@@ -293,6 +307,16 @@ export function readLlmSettings(
   }
 }
 
+function toFlowStreamActivity(item: LlmSummaryItem): FlowStreamActivity {
+  return {
+    app: item.app,
+    label: item.title || item.note || item.url || item.app,
+    start: formatClock(item.start_time),
+    end: formatClock(item.end_time),
+    duration: formatMinutes(item.duration_minutes),
+  }
+}
+
 function durationMinutes(log: TimeRangeRecord) {
   const start = timeValue(log.start_time)
   const end = timeValue(log.end_time)
@@ -302,6 +326,13 @@ function durationMinutes(log: TimeRangeRecord) {
   }
 
   return (end - start) / 60_000
+}
+
+function formatClock(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
 }
 
 function buildLlmPrompt(payload: LlmSummaryPayload) {
