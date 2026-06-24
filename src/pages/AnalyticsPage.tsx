@@ -137,9 +137,9 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
               const active = dateKey === effectiveDateKey
               return (
                 <button
-                  className={`rounded-full border px-4 py-2 text-sm transition ${
+                  className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF8] ${
                     active
-                      ? "border-[#B7D9C0] bg-[#ECF7EF] text-[#284135]"
+                      ? "border-[#B7D9C0] bg-[#ECF7EF] text-[#284135] shadow-[0_8px_18px_rgba(110,130,118,0.08)]"
                       : "border-[#E3ECE5] bg-white/75 text-[#6D8176] hover:border-[#CFE0D2] hover:text-[#284135]"
                   }`}
                   key={dateKey}

@@ -261,7 +261,7 @@ export function SettingsPage() {
             <div className="grid gap-4">
               <Field label="Провайдер">
                 <select
-                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
                   onChange={() => updateLlmSettings({ provider: "ollama" })}
                   value={llmSettings.provider}
                 >
@@ -271,7 +271,7 @@ export function SettingsPage() {
 
               <Field label="Адрес Ollama">
                 <input
-                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
                   onChange={(event) => updateLlmSettings({ ollamaUrl: event.target.value })}
                   placeholder="http://localhost:11434"
                   value={llmSettings.ollamaUrl}
@@ -280,7 +280,7 @@ export function SettingsPage() {
 
               <Field label="Модель">
                 <input
-                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                  className="h-11 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
                   onChange={(event) => updateLlmSettings({ model: event.target.value })}
                   placeholder="qwen2.5:7b-instruct"
                   value={llmSettings.model}
@@ -307,7 +307,7 @@ export function SettingsPage() {
           >
             <div className="flex gap-2">
               <input
-                className="h-11 min-w-0 flex-1 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC]"
+                className="h-11 min-w-0 flex-1 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
                 onChange={(event) => setNewAppName(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {

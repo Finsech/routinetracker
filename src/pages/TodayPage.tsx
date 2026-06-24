@@ -330,7 +330,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
                 <div className="mt-3 space-y-2">
                   {flow.streams.map((stream) => (
                     <button
-                      className="flex w-full items-center justify-between gap-3 rounded-[16px] border border-[#E7EFE9] bg-white px-3 py-2.5 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9]"
+                      className="flex w-full items-center justify-between gap-3 rounded-[16px] border border-[#E7EFE9] bg-white px-3 py-2.5 text-left transition hover:border-[#D3E3D8] hover:bg-[#F9FCF9] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FBFDFB]"
                       key={stream.name}
                       onClick={() => {
                         setSelectedStream({ flow, stream })
@@ -429,7 +429,7 @@ function TimelineInspector({
   return (
     <div>
       <button
-        className="inline-flex items-center gap-2 text-sm text-[#6C7E74] transition hover:text-[#273E31]"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm text-[#6C7E74] transition hover:text-[#273E31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4]"
         onClick={onReset}
         type="button"
       >
@@ -460,7 +460,7 @@ function StreamInspector({
   return (
     <div>
       <button
-        className="inline-flex items-center gap-2 text-sm text-[#6C7E74] transition hover:text-[#273E31]"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm text-[#6C7E74] transition hover:text-[#273E31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4]"
         onClick={onReset}
         type="button"
       >
@@ -550,7 +550,7 @@ function IdleReviewDialog({
         </div>
 
         <textarea
-          className="mt-5 min-h-28 w-full resize-none rounded-[20px] border border-[#DCE7DE] bg-[#FBFDFB] px-4 py-3 text-sm outline-none transition focus:border-[#9DC3AC]"
+          className="mt-5 min-h-28 w-full resize-none rounded-[20px] border border-[#DCE7DE] bg-[#FBFDFB] px-4 py-3 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
           onChange={(event) => onNoteChange(event.target.value)}
           placeholder="Например: обед, звонок, дорога"
           value={note}

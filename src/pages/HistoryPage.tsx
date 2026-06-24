@@ -204,7 +204,7 @@ function WeekItemInspector({
   return (
     <div>
       <button
-        className="inline-flex items-center gap-2 text-sm text-[#6C7E74] transition hover:text-[#273E31]"
+        className="inline-flex items-center gap-2 rounded-full px-1 py-1 text-sm text-[#6C7E74] transition hover:text-[#273E31] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4]"
         onClick={onReset}
         type="button"
       >

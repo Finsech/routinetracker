@@ -145,7 +145,7 @@ export function AppShell({
 
               return (
                 <button
-                  className={`group flex w-full flex-col items-center gap-2 rounded-[22px] px-2 py-3 text-xs transition ${
+                  className={`group flex w-full flex-col items-center gap-2 rounded-[22px] px-2 py-3 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#F7FBF7] ${
                     active
                       ? "bg-white/92 text-[#2E493B] shadow-[0_12px_28px_rgba(91,121,108,0.12)]"
                       : "text-[#74867B] hover:bg-white/60 hover:text-[#2E493B]"
@@ -227,11 +227,11 @@ export function AppShell({
             {navItems.map((item) => {
               const Icon = item.icon
               return (
-                <Button
-                  key={item.id}
-                  onClick={() => onViewChange(item.id)}
-                  type="button"
-                  variant={activeView === item.id ? "default" : "outline"}
+              <Button
+                key={item.id}
+                onClick={() => onViewChange(item.id)}
+                type="button"
+                variant={activeView === item.id ? "default" : "outline"}
                 >
                   <Icon className="size-4" />
                   {item.label}

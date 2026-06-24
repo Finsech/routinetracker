@@ -36,8 +36,10 @@ export function WeekTimeline({
         <div />
         {days.map((day) => (
           <button
-            className={`rounded-[16px] px-2 py-2 text-center transition ${
-              selectedDayKey === day.dateKey ? "bg-[#F3F8F4]" : "hover:bg-[#F8FBF8]"
+            className={`rounded-[16px] px-2 py-2 text-center transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF8] ${
+              selectedDayKey === day.dateKey
+                ? "bg-[#F3F8F4] shadow-[0_8px_18px_rgba(110,130,118,0.08)]"
+                : "hover:bg-[#F8FBF8]"
             }`}
             key={day.dateKey}
             onClick={() => onDaySelect?.(day)}
@@ -98,8 +100,8 @@ export function WeekTimeline({
 
                 return (
                   <button
-                    className={`absolute left-2 right-2 overflow-hidden rounded-[14px] border px-2.5 py-2 text-left shadow-[0_8px_18px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(110,130,118,0.12)] ${
-                      selected ? "border-[#8BB79E] ring-2 ring-[#CBE3D4]" : "border-white/80"
+                  className={`absolute left-2 right-2 overflow-hidden rounded-[14px] border px-2.5 py-2 text-left shadow-[0_8px_18px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_14px_24px_rgba(110,130,118,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF9] ${
+                      selected ? "border-[#8BB79E] ring-2 ring-[#CBE3D4]" : "border-white/80 hover:border-[#CFE0D2]"
                     }`}
                     key={itemId}
                     onClick={() => onItemSelect?.(day, item)}

@@ -107,8 +107,8 @@ export function DayTimeline({
 
               return (
                 <button
-                  className={`absolute left-2.5 right-2.5 overflow-hidden rounded-[18px] border px-3.5 py-2.5 text-left shadow-[0_10px_24px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_28px_rgba(110,130,118,0.12)] ${
-                    selected ? "border-[#8BB79E] ring-2 ring-[#CBE3D4]" : "border-white/80"
+                  className={`absolute left-2.5 right-2.5 overflow-hidden rounded-[18px] border px-3.5 py-2.5 text-left shadow-[0_10px_24px_rgba(110,130,118,0.08)] transition hover:-translate-y-[1px] hover:shadow-[0_16px_28px_rgba(110,130,118,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF9] ${
+                    selected ? "border-[#8BB79E] ring-2 ring-[#CBE3D4]" : "border-white/80 hover:border-[#CFE0D2]"
                   }`}
                   key={itemId}
                   onClick={() => onItemSelect?.(item)}
