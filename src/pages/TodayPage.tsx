@@ -49,12 +49,25 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
+  const selectedDateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate])
+  const todayDateKey = useMemo(() => formatDateKey(new Date()), [])
   const pendingIdleLog = useMemo(
-    () =>
-      idleLogs.find(
-        (log) => !log.reviewed && !log.ignored && !postponedIdleIds.includes(log.id),
-      ) ?? null,
-    [idleLogs, postponedIdleIds],
+    () => {
+      if (selectedDateKey !== todayDateKey) {
+        return null
+      }
+
+      return (
+        idleLogs.find(
+          (log) =>
+            !log.reviewed &&
+            !log.ignored &&
+            !postponedIdleIds.includes(log.id) &&
+            formatDateKey(new Date(log.start_time)) === selectedDateKey,
+        ) ?? null
+      )
+    },
+    [idleLogs, postponedIdleIds, selectedDateKey, todayDateKey],
   )
   const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const llmCacheSignature = useMemo(
@@ -585,4 +598,11 @@ function formatTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(value))
+}
+
+function formatDateKey(value: Date) {
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, "0")
+  const day = String(value.getDate()).padStart(2, "0")
+  return `${year}-${month}-${day}`
 }
