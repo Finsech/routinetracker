@@ -16,12 +16,15 @@ const FLOW_ACCENTS: Record<string, string> = {
   [RAW_FLOW_NAME]: "#6EA88F",
   [IDLE_FLOW_NAME]: "#D9A66C",
 }
-const APP_ACCENTS: Array<{ match: RegExp; color: string }> = [
-  { match: /code|cursor|visual studio|vscode/i, color: "#68A67B" },
-  { match: /notion/i, color: "#7C8F66" },
-  { match: /browser|chrome|edge|firefox|opera/i, color: "#7FA8D8" },
-  { match: /figma/i, color: "#B792D9" },
-  { match: /slack|telegram|discord|gmail|mail|outlook/i, color: "#E3A36C" },
+const CONTEXT_ACCENT_PALETTE = [
+  "#6EA88F",
+  "#7FA8D8",
+  "#B792D9",
+  "#E3A36C",
+  "#7C8F66",
+  "#C98B7A",
+  "#6DA6A3",
+  "#A88BC5",
 ]
 
 type TimeRangeRecord = {
@@ -302,8 +305,39 @@ function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
 }
 
 function accentForActivity(log: ActivityLogRecord) {
-  const haystack = `${log.app_name} ${log.window_title ?? ""} ${log.url ?? ""}`
-  return APP_ACCENTS.find((entry) => entry.match.test(haystack))?.color ?? FLOW_ACCENTS[RAW_FLOW_NAME]
+  return stableAccentForKey(contextKeyForActivity(log))
+}
+
+function contextKeyForActivity(log: ActivityLogRecord) {
+  const domain = extractDomain(log.url)
+
+  if (domain) {
+    return `site:${domain}`
+  }
+
+  return `app:${log.app_name.trim().toLowerCase()}`
+}
+
+function extractDomain(value: string | null) {
+  if (!value) {
+    return null
+  }
+
+  try {
+    return new URL(value).hostname.replace(/^www\./i, "").toLowerCase()
+  } catch {
+    return null
+  }
+}
+
+function stableAccentForKey(key: string) {
+  let hash = 0
+
+  for (const character of key) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0
+  }
+
+  return CONTEXT_ACCENT_PALETTE[hash % CONTEXT_ACCENT_PALETTE.length] ?? FLOW_ACCENTS[RAW_FLOW_NAME]
 }
 
 function toFlowStreamActivity(log: ActivityLogRecord) {

@@ -86,6 +86,22 @@ export type FocusFlowExport = {
   }
 }
 
+export async function getAutostartStatus() {
+  if (!isTauriRuntime()) {
+    return false
+  }
+
+  return invoke<boolean>("get_autostart_status")
+}
+
+export async function setAutostartStatus(enabled: boolean) {
+  if (!isTauriRuntime()) {
+    return enabled
+  }
+
+  return invoke<boolean>("set_autostart_status", { enabled })
+}
+
 let browserTrackerRunning = false
 let browserStoplist: StoplistItemRecord[] | null = null
 let browserIdleLogs: IdleLogRecord[] | null = null

@@ -7,10 +7,12 @@ import { settingsRows } from "@/data/mock"
 import {
   addStoplistItem,
   exportFocusFlowData,
+  getAutostartStatus,
   getBrowserBridgeStatus,
   getSettings,
   getStoplist,
   removeStoplistItem,
+  setAutostartStatus,
   setSetting,
   type BrowserBridgeStatusRecord,
   type SettingEntryRecord,
@@ -47,6 +49,8 @@ export function SettingsPage() {
   const [browserBridgeStatus, setBrowserBridgeStatus] = useState<BrowserBridgeStatusRecord | null>(
     null,
   )
+  const [autostartEnabled, setAutostartEnabled] = useState(false)
+  const [autostartSaving, setAutostartSaving] = useState(false)
   const visibleRows = rows.filter((row) => !llmSettingLabels.has(row.label))
 
   useEffect(() => {
@@ -68,6 +72,11 @@ export function SettingsPage() {
           setRows(settings.map(mapSetting))
           setLlmSettings(readLlmSettings(settings))
         }
+        void getAutostartStatus().then((value) => {
+          if (isMounted) {
+            setAutostartEnabled(value)
+          }
+        })
         setStoplist(stoplistItems)
         setBrowserBridgeStatus(bridgeStatus)
         setError(null)
@@ -185,6 +194,29 @@ export function SettingsPage() {
     }
   }
 
+  async function toggleAutostart() {
+    const nextValue = !autostartEnabled
+    setAutostartSaving(true)
+
+    try {
+      const actualValue = await setAutostartStatus(nextValue)
+      setAutostartEnabled(actualValue)
+      await setSetting("autostart", actualValue ? "Включен" : "Выключен")
+      setRows((current) =>
+        current.map((row) =>
+          row.label === "РђРІС‚РѕР·Р°РїСѓСЃРє" || row.label === "Автозапуск"
+            ? { ...row, value: actualValue ? "Включен" : "Выключен" }
+            : row,
+        ),
+      )
+      setError(null)
+    } catch {
+      setError("Не удалось изменить автозапуск приложения")
+    } finally {
+      setAutostartSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-5">
       {error && (
@@ -212,7 +244,16 @@ export function SettingsPage() {
           >
             <div className="grid gap-3">
               {visibleRows.map((row) => (
-                <SettingMetric key={row.label} label={row.label} value={row.value} />
+                row.label === "РђРІС‚РѕР·Р°РїСѓСЃРє" || row.label === "Автозапуск" ? (
+                  <AutostartMetric
+                    enabled={autostartEnabled}
+                    key={row.label}
+                    onToggle={() => void toggleAutostart()}
+                    saving={autostartSaving}
+                  />
+                ) : (
+                  <SettingMetric key={row.label} label={row.label} value={row.value} />
+                )
               ))}
             </div>
           </SettingsCard>
@@ -447,6 +488,47 @@ function Field({
       <span className="text-sm text-[#73867A]">{label}</span>
       {children}
     </label>
+  )
+}
+
+function AutostartMetric({
+  enabled,
+  onToggle,
+  saving,
+}: {
+  enabled: boolean
+  onToggle: () => void
+  saving: boolean
+}) {
+  return (
+    <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm text-[#73867A]">Автозапуск</p>
+          <p className="mt-2 text-[1.02rem] font-medium text-[#2B4236]">
+            {enabled ? "Включен" : "Выключен"}
+          </p>
+        </div>
+
+        <button
+          aria-label="Переключить автозапуск"
+          className={`relative inline-flex h-8 w-14 items-center rounded-full border transition ${
+            enabled
+              ? "border-[#8EB89B] bg-[#DFF1E4]"
+              : "border-[#D6E3D9] bg-white hover:border-[#BFD2C3]"
+          } ${saving ? "cursor-wait opacity-70" : ""}`}
+          disabled={saving}
+          onClick={onToggle}
+          type="button"
+        >
+          <span
+            className={`inline-block size-6 rounded-full bg-white shadow-[0_6px_14px_rgba(68,94,79,0.18)] transition ${
+              enabled ? "translate-x-[26px]" : "translate-x-[3px]"
+            }`}
+          />
+        </button>
+      </div>
+    </div>
   )
 }
 

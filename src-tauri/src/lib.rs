@@ -1,5 +1,7 @@
+mod autostart;
 mod browser_bridge;
 mod database;
+mod ollama;
 mod tracker;
 
 use browser_bridge::BrowserBridge;
@@ -42,6 +44,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             greet,
+            autostart::get_autostart_status,
+            autostart::set_autostart_status,
             browser_bridge::get_browser_bridge_status,
             database::get_activity_logs,
             database::create_activity_log,
@@ -56,6 +60,7 @@ pub fn run() {
             database::get_llm_summary,
             database::save_llm_summary,
             database::get_llm_summaries,
+            ollama::request_ollama_generate,
             tracker::start_tracking,
             tracker::stop_tracking,
             tracker::get_tracking_status

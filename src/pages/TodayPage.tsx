@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ArrowRight, Sparkles, X } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
-import { DayTimeline } from "@/components/dashboard/DayTimeline"
+import { DayTimeline, type HourTimelineRow } from "@/components/dashboard/DayTimeline"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { Button } from "@/components/ui/button"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
@@ -27,11 +27,15 @@ import {
   serializeLlmGroups,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
-import type { FlowStream, FlowSummary, TimelineItem } from "@/types"
+import type { FlowStream, FlowSummary } from "@/types"
 
 type SelectedStream = {
   flow: FlowSummary
   stream: FlowStream
+}
+
+type SelectedHour = {
+  row: HourTimelineRow
 }
 
 export function TodayPage({ selectedDate }: { selectedDate: Date }) {
@@ -47,28 +51,25 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const [llmError, setLlmError] = useState<string | null>(null)
   const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
-  const [selectedTimelineItem, setSelectedTimelineItem] = useState<TimelineItem | null>(null)
+  const [selectedHour, setSelectedHour] = useState<SelectedHour | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const selectedDateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate])
   const todayDateKey = useMemo(() => formatDateKey(new Date()), [])
-  const pendingIdleLog = useMemo(
-    () => {
-      if (selectedDateKey !== todayDateKey) {
-        return null
-      }
+  const pendingIdleLog = useMemo(() => {
+    if (selectedDateKey !== todayDateKey) {
+      return null
+    }
 
-      return (
-        idleLogs.find(
-          (log) =>
-            !log.reviewed &&
-            !log.ignored &&
-            !postponedIdleIds.includes(log.id) &&
-            formatDateKey(new Date(log.start_time)) === selectedDateKey,
-        ) ?? null
-      )
-    },
-    [idleLogs, postponedIdleIds, selectedDateKey, todayDateKey],
-  )
+    return (
+      idleLogs.find(
+        (log) =>
+          !log.reviewed &&
+          !log.ignored &&
+          !postponedIdleIds.includes(log.id) &&
+          formatDateKey(new Date(log.start_time)) === selectedDateKey,
+      ) ?? null
+    )
+  }, [idleLogs, postponedIdleIds, selectedDateKey, todayDateKey])
   const llmPayload = useMemo(() => buildLlmSummaryPayload(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const llmCacheSignature = useMemo(
     () => buildLlmCacheSignature(llmPayload, llmSettings),
@@ -83,11 +84,13 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       try {
         const [nextLogs, nextIdleLogs] = await Promise.all([getActivityLogs(), getIdleLogs()])
 
-        if (active) {
-          setLogs(nextLogs)
-          setIdleLogs(nextIdleLogs)
-          setError(null)
+        if (!active) {
+          return
         }
+
+        setLogs(nextLogs)
+        setIdleLogs(nextIdleLogs)
+        setError(null)
       } catch {
         if (active) {
           setError("Не удалось загрузить активности")
@@ -215,9 +218,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         reviewed: true,
       })
 
-      setIdleLogs((currentLogs) =>
-        currentLogs.map((log) => (log.id === updatedLog.id ? updatedLog : log)),
-      )
+      setIdleLogs((currentLogs) => currentLogs.map((log) => (log.id === updatedLog.id ? updatedLog : log)))
       setPostponedIdleIds((currentIds) => currentIds.filter((id) => id !== updatedLog.id))
       setIdleNote("")
     } catch {
@@ -236,10 +237,6 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     setIdleNote("")
   }
 
-  const selectedTimelineId = selectedTimelineItem
-    ? `${selectedTimelineItem.startMinutes}-${selectedTimelineItem.endMinutes}-${selectedTimelineItem.label}-${summary.timeline.findIndex((item) => item === selectedTimelineItem)}`
-    : null
-
   const donutSegments = buildDonutSegments(flows)
 
   return (
@@ -256,18 +253,18 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         <DayTimeline
           flows={flows}
           items={summary.timeline}
-          onItemSelect={(item) => {
-            setSelectedTimelineItem(item)
+          onHourSelect={(row) => {
+            setSelectedHour({ row })
             setSelectedStream(null)
           }}
-          selectedItemId={selectedTimelineId}
+          selectedHour={selectedHour?.row.hour ?? null}
           totalTime={summary.activeTime}
         />
       </div>
 
       <aside className="space-y-5">
         <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
-          {!selectedTimelineItem && !selectedStream ? (
+          {!selectedHour && !selectedStream ? (
             <>
               <p className="font-['Georgia'] text-[1.72rem] text-[#24382F]">Твой день</p>
               <div className="mt-4">
@@ -290,8 +287,8 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
                 </p>
               )}
             </>
-          ) : selectedTimelineItem ? (
-            <TimelineInspector item={selectedTimelineItem} onReset={() => setSelectedTimelineItem(null)} />
+          ) : selectedHour ? (
+            <HourInspector onReset={() => setSelectedHour(null)} row={selectedHour.row} />
           ) : selectedStream ? (
             <StreamInspector selectedStream={selectedStream} onReset={() => setSelectedStream(null)} />
           ) : null}
@@ -328,10 +325,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             )}
 
             {flows.map((flow) => (
-              <article
-                className="rounded-[22px] border border-[#E2EBE4] bg-[#FBFDFB] p-3.5"
-                key={flow.name}
-              >
+              <article className="rounded-[22px] border border-[#E2EBE4] bg-[#FBFDFB] p-3.5" key={flow.name}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 rounded-full" style={{ background: flow.accent }} />
@@ -347,7 +341,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
                       key={stream.name}
                       onClick={() => {
                         setSelectedStream({ flow, stream })
-                        setSelectedTimelineItem(null)
+                        setSelectedHour(null)
                       }}
                       type="button"
                     >
@@ -389,10 +383,7 @@ function buildDonutSegments(flows: FlowSummary[]) {
     return [{ label: "Активно", value: 100, color: "#7CB39A" }]
   }
 
-  const total = Math.max(
-    1,
-    flows.reduce((sum, flow) => sum + parseDuration(flow.time), 0),
-  )
+  const total = Math.max(1, flows.reduce((sum, flow) => sum + parseDuration(flow.time), 0))
 
   return flows.map((flow) => ({
     label: flow.name,
@@ -432,13 +423,22 @@ function InspectorMetric({ label, value }: { label: string; value: string }) {
   )
 }
 
-function TimelineInspector({
-  item,
+function HourInspector({
+  row,
   onReset,
 }: {
-  item: TimelineItem
+  row: HourTimelineRow
   onReset: () => void
 }) {
+  const details = row.segments.flatMap((segment) =>
+    segment.details.map((detail) => ({
+      detail,
+      contextLabel: segment.label,
+      segmentDuration: segment.durationMinutes,
+      episodes: segment.episodes,
+    })),
+  )
+
   return (
     <div>
       <button
@@ -449,13 +449,55 @@ function TimelineInspector({
         <ArrowRight className="size-4 rotate-180" />
         Назад к обзору
       </button>
-      <p className="mt-4 font-['Georgia'] text-[1.7rem] leading-tight text-[#24382F]">{item.label}</p>
+      <p className="mt-4 font-['Georgia'] text-[1.7rem] leading-tight text-[#24382F]">
+        {row.label} - {String(row.hour + 1).padStart(2, "0")}:00
+      </p>
+
       <div className="mt-4 space-y-3">
-        <InspectorMetric label="Время" value={`${item.start} - ${item.end}`} />
-        <InspectorMetric label="Длительность" value={formatMinutes(item.durationMinutes)} />
-        <InspectorMetric label="Поток" value={item.flow} />
-        <InspectorMetric label="Источник" value={item.app} />
-        {item.url && <InspectorMetric label="URL" value={item.url} />}
+        <InspectorMetric label="Активно за час" value={formatMinutes(row.coveredMinutes)} />
+        <InspectorMetric label="Контекстов" value={String(row.segments.length)} />
+        <InspectorMetric
+          label="Эпизодов"
+          value={String(row.segments.reduce((sum, segment) => sum + segment.episodes, 0))}
+        />
+      </div>
+
+      <div className="mt-5 space-y-3">
+        {row.segments.map((segment) => (
+          <div
+            className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
+            key={segment.id}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="size-2.5 rounded-full" style={{ backgroundColor: segment.accent }} />
+                <p className="truncate text-sm font-medium text-[#273E31]">{segment.label}</p>
+              </div>
+              <span className="text-sm text-[#62756A]">{formatMinutes(segment.durationMinutes)}</span>
+            </div>
+            <p className="mt-1 text-xs text-[#7B8D84]">{segment.episodes} эпизодов</p>
+          </div>
+        ))}
+
+        {details.map(({ detail, contextLabel }, index) => (
+          <div
+            className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
+            key={`${detail.startMinutes}-${detail.endMinutes}-${detail.label}-${index}`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-[#273E31]">{detail.label}</p>
+                <p className="mt-1 text-xs text-[#7B8D84]">
+                  {detail.app} • {contextLabel}
+                </p>
+              </div>
+              <span className="text-sm text-[#62756A]">{formatMinutes(detail.durationMinutes)}</span>
+            </div>
+            <p className="mt-2 text-xs text-[#87978F]">
+              {detail.start} - {detail.end}
+            </p>
+          </div>
+        ))}
       </div>
     </div>
   )

@@ -1,4 +1,5 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
+import { requestOllamaGenerate } from "@/lib/tauri-api"
 import type { FlowStreamActivity, FlowSummary } from "@/types"
 
 type TimeRangeRecord = {
@@ -183,28 +184,39 @@ export async function requestOllamaSummary(
     return []
   }
 
-  const response = await fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
+  let data: OllamaGenerateResponse
+
+  if (isTauriRuntime()) {
+    data = await requestOllamaGenerate({
+      baseUrl: normalizeOllamaUrl(settings.ollamaUrl),
       model: settings.model,
       prompt: buildLlmPrompt(payload),
-      stream: false,
       format: LLM_RESPONSE_SCHEMA,
-      options: {
-        temperature: 0,
+    })
+  } else {
+    const response = await fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  })
+      body: JSON.stringify({
+        model: settings.model,
+        prompt: buildLlmPrompt(payload),
+        stream: false,
+        format: LLM_RESPONSE_SCHEMA,
+        options: {
+          temperature: 0,
+        },
+      }),
+    })
 
-  if (!response.ok) {
-    const details = await response.text()
-    throw new Error(details || `Ollama вернула HTTP ${response.status}`)
+    if (!response.ok) {
+      const details = await response.text()
+      throw new Error(details || `Ollama returned HTTP ${response.status}`)
+    }
+
+    data = (await response.json()) as OllamaGenerateResponse
   }
-
-  const data = (await response.json()) as OllamaGenerateResponse
 
   if (data.error) {
     throw new Error(data.error)
@@ -436,6 +448,10 @@ function normalizeOllamaUrl(value: string) {
   const trimmed = value.trim() || DEFAULT_LLM_SETTINGS.ollamaUrl
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
   return withProtocol.replace(/\/+$/, "")
+}
+
+function isTauriRuntime() {
+  return "__TAURI_INTERNALS__" in window
 }
 
 function settingValue(settings: { key: string; value: string }[], key: string, fallback: string) {
