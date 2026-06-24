@@ -65,6 +65,15 @@
 4. Собрать desktop build и проверить запуск готового приложения.
 5. Подготовить release notes и комплект к приватной публикации.
 
+Статус на 2026-06-24:
+
+- desktop build успешно собран через `npm run tauri build`;
+- проверен запуск `src-tauri/target/release/focusflow.exe`;
+- готовы инсталляторы:
+  - `src-tauri/target/release/bundle/msi/FocusFlow_0.1.0_x64_en-US.msi`
+  - `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.0_x64-setup.exe`
+- release notes вынесены в `RELEASE_NOTES.md`.
+
 ## Команды проверки
 
 ```bash
