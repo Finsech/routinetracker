@@ -11,6 +11,7 @@
 
 - Day LLM summary stays in app memory across section switches until restart or manual rebuild.
 - Main navigation order is Today -> Day Analysis -> Week -> Settings.
+- Closing the main window now hides FocusFlow to tray; full exit is available only from tray menu.
 
 FocusFlow - десктопное приложение для Windows 11, которое автоматически отслеживает экранное время, визуализирует активность и использует LLM для группировки действий по проектам и категориям.
 

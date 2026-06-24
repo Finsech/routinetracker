@@ -10,6 +10,7 @@
 
 - Day LLM summary now survives simple view switches inside the app.
 - Navigation order is Today -> Day Analysis -> Week -> Settings.
+- Closing the main window now hides FocusFlow to tray; full exit is available only from tray menu.
 
 ## Статус
 
