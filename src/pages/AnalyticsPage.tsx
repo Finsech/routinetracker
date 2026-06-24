@@ -127,8 +127,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
           <div className="max-w-[540px]">
             <p className="font-['Georgia'] text-[2rem] leading-none text-[#24382F]">Аналитика</p>
             <p className="mt-3 text-sm leading-6 text-[#6C7E74]">
-              Здесь живет спокойная сводка дня: главный фокус, потоки, переключения контекста
-              и общая картина без технического шума.
+              Спокойная сводка по выбранному дню: фокус, потоки, переключения контекста и короткие выводы без технического шума.
             </p>
           </div>
 
@@ -157,13 +156,16 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_360px]">
         <article className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
           <div className="flex flex-wrap items-start justify-between gap-6">
-            <div className="max-w-[280px]">
+            <div className="max-w-[300px]">
               <p className="font-['Georgia'] text-[1.75rem] text-[#24382F]">
                 {formatAnalyticsHeading(effectiveDateKey)}
               </p>
               <p className="mt-2 text-sm leading-6 text-[#72857A]">
                 {buildHeadline(topFlow, longestStream, summary.focusPercent)}
               </p>
+              <div className="mt-4 inline-flex items-center rounded-full border border-[#E3ECE5] bg-[#FBFDFB] px-3 py-1.5 text-xs text-[#6E8176]">
+                {flows.length > 0 ? `${flows.length} потоков в обзоре` : "Сводка строится из локальных логов"}
+              </div>
             </div>
 
             <div className="min-w-[250px] flex-1">
@@ -171,7 +173,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard icon={Focus} label="Фокус" value={summary.focusPercent} />
             <MetricCard icon={Clock3} label="Активно" value={summary.activeTime} />
             <MetricCard icon={Sparkles} label="Простой" value={summary.idleTime} />
@@ -189,12 +191,12 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
             <SummaryLine
               label="Главный поток"
               value={topFlow?.name ?? "Пока не определился"}
-              hint={topFlow ? topFlow.time : "Когда появится больше данных, здесь будет видно, куда ушло основное время."}
+              hint={topFlow ? `Доля дня: ${topFlow.time}.` : "Когда появится больше данных, здесь станет видно, куда ушло основное время."}
             />
             <SummaryLine
               label="Самый длинный стрим"
               value={longestStream?.name ?? "Пока нет"}
-              hint={longestStream ? longestStream.time : "Стримы появятся после группировки или первых логов."}
+              hint={longestStream ? `${longestStream.time} непрерывного времени.` : "Стримы появятся после группировки или первых логов."}
             />
             <SummaryLine
               label="Ритм дня"
@@ -443,7 +445,7 @@ function MetricCard({
         <Icon className="size-4" />
         <span className="text-sm">{label}</span>
       </div>
-      <p className="mt-3 text-[1.4rem] font-medium leading-none text-[#284135]">{value}</p>
+      <p className="mt-3 text-[1.28rem] font-medium leading-none text-[#284135]">{value}</p>
     </div>
   )
 }
@@ -461,7 +463,7 @@ function SummaryLine({
     <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-[#6F8278]">{label}</span>
-        <span className="font-medium text-[#284135]">{value}</span>
+        <span className="max-w-[52%] text-right font-medium text-[#284135]">{value}</span>
       </div>
       <p className="mt-2 text-sm leading-6 text-[#7E8F86]">{hint}</p>
     </div>

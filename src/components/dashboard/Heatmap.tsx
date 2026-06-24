@@ -19,7 +19,7 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
           <p className="text-xs text-[#71837A]">GitHub-like тепловая карта по реальным часам работы.</p>
         </div>
         <div className="rounded-full border border-[#DCE8DD] bg-[#F8FBF8] px-4 py-2 text-sm font-medium text-[#30463A]">
-          {totalHours.toFixed(1)} ч за неделю
+          {totalHours.toFixed(1)} ч в этом году
         </div>
       </div>
 
@@ -55,6 +55,20 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
             ))}
           </div>
         </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-end gap-3 text-[11px] text-[#73867A]">
+        <span>меньше</span>
+        <div className="flex items-center gap-1">
+          {[0, 1, 2, 3, 4, 5].map((level) => (
+            <span
+              className="size-3 rounded-[3px]"
+              key={level}
+              style={{ backgroundColor: colorForLevel(level) }}
+            />
+          ))}
+        </div>
+        <span>больше</span>
       </div>
     </section>
   )

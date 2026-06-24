@@ -136,7 +136,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                 <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">Ритм недели</p>
                 <p className="mt-1.5 text-[13px] leading-6 text-[#6F8177]">{rangeLabel}</p>
 
-                <div className="mt-4 space-y-2.5">
+                <div className="mt-4 grid gap-2.5">
                   <InsightMetric label="Всего" value={formatMinutes(totalTrackedMinutes)} />
                   <InsightMetric
                     label="Самый плотный день"
@@ -152,7 +152,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                   />
                 </div>
 
-                <div className="mt-4 rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
                   <div className="flex items-center gap-2 text-[#6E8176]">
                     <CalendarRange className="size-4" />
                     <span className="text-[13px]">Выбранный день</span>
@@ -166,7 +166,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                 </div>
 
                 {longestItem && (
-                  <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                  <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
                     <div className="flex items-center gap-2 text-[#6E8176]">
                       <Clock3 className="size-4" />
                       <span className="text-[13px]">Самый длинный интервал</span>
@@ -179,6 +179,13 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                     </p>
                   </div>
                 )}
+
+                <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                  <p className="text-[13px] text-[#6E8176]">Короткий вывод</p>
+                  <p className="mt-2 text-sm leading-6 text-[#50655A]">
+                    {buildWeekHeadline(totalTrackedMinutes, busiestDay?.label ?? null, totalSwitches)}
+                  </p>
+                </div>
               </>
             ) : selectedItem ? (
               <WeekItemInspector item={selectedItem.item} day={selectedItem.day} onReset={() => setSelectedItem(null)} />
@@ -245,6 +252,22 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
       <p className="mt-1.5 text-[1.05rem] font-medium text-[#253D31]">{value}</p>
     </div>
   )
+}
+
+function buildWeekHeadline(totalTrackedMinutes: number, busiestDayLabel: string | null, totalSwitches: number) {
+  if (totalTrackedMinutes === 0) {
+    return "Неделя пока почти пустая: как только появится больше активности, здесь сложится внятная картина ритма."
+  }
+
+  if (!busiestDayLabel) {
+    return `За неделю уже накопилось ${formatMinutes(totalTrackedMinutes)} активности.`
+  }
+
+  if (totalSwitches <= 3) {
+    return `Неделя выглядит довольно цельной: основной вес пришелся на ${busiestDayLabel}, а заметных переключений контекста было немного.`
+  }
+
+  return `Самый плотный день — ${busiestDayLabel}. По неделе видно ${totalSwitches} заметных переключений контекста, так что ритм был скорее дробным.`
 }
 
 function countContextSwitches(items: TimelineItem[]) {

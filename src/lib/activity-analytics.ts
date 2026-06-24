@@ -95,7 +95,11 @@ export function buildHistorySummary(
     }
   })
 
-  const totalHours = week.reduce((sum, item) => sum + item.hours, 0)
+  const selectedYear = date.getFullYear()
+  const totalMinutesYear = [...buildDailyMinuteMap(logs, idleLogs).entries()].reduce((sum, [dateKey, minutes]) => {
+    return dateKey.startsWith(`${selectedYear}-`) ? sum + minutes : sum
+  }, 0)
+  const totalHours = totalMinutesYear / 60
 
   return {
     week,
