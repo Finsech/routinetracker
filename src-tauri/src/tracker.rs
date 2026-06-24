@@ -5,13 +5,14 @@ use serde::Serialize;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread::{self, JoinHandle};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use tauri::{AppHandle, Manager};
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 const EVENT_WAIT_SLICE: Duration = Duration::from_millis(250);
 const IDLE_THRESHOLD: Duration = Duration::from_secs(10 * 60);
 const MIN_ACTIVITY_DURATION: Duration = Duration::from_secs(5);
+const WAKE_GAP_THRESHOLD: Duration = Duration::from_secs(15);
 
 #[cfg(target_os = "windows")]
 static FOREGROUND_CHANGED: AtomicBool = AtomicBool::new(false);
@@ -143,9 +144,26 @@ fn tracking_loop(
     let mut last_snapshot_poll = Instant::now()
         .checked_sub(POLL_INTERVAL)
         .unwrap_or_else(Instant::now);
+    let mut last_wall_clock = SystemTime::now();
     let _foreground_hook = install_foreground_event_hook();
 
     while running.load(Ordering::SeqCst) {
+        let current_wall_clock = SystemTime::now();
+        let wake_gap = current_wall_clock
+            .duration_since(last_wall_clock)
+            .ok()
+            .filter(|gap| *gap >= WAKE_GAP_THRESHOLD);
+        last_wall_clock = current_wall_clock;
+
+        if let Some(gap) = wake_gap {
+            let gap_started_at = timestamp_before(gap);
+            close_session_at(&app, current.take(), gap_started_at);
+            set_current_snapshot(&current_snapshot, None);
+            last_snapshot_poll = Instant::now()
+                .checked_sub(POLL_INTERVAL)
+                .unwrap_or_else(Instant::now);
+        }
+
         let idle_duration = read_idle_duration();
         idle_seconds.store(idle_duration.as_secs(), Ordering::SeqCst);
 
