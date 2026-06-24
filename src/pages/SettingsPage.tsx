@@ -39,11 +39,14 @@ export function SettingsPage() {
   const [rows, setRows] = useState<SettingRow[]>(settingsRows)
   const [stoplist, setStoplist] = useState<StoplistItemRecord[]>([])
   const [llmSettings, setLlmSettings] = useState<LlmProviderSettings>(DEFAULT_LLM_SETTINGS)
-  const [newAppName, setNewAppName] = useState("")
+  const [stoplistType, setStoplistType] = useState<"app" | "site">("app")
+  const [newStoplistValue, setNewStoplistValue] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [savingLlm, setSavingLlm] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [browserBridgeStatus, setBrowserBridgeStatus] = useState<BrowserBridgeStatusRecord | null>(null)
+  const [browserBridgeStatus, setBrowserBridgeStatus] = useState<BrowserBridgeStatusRecord | null>(
+    null,
+  )
   const visibleRows = rows.filter((row) => !llmSettingLabels.has(row.label))
 
   useEffect(() => {
@@ -101,8 +104,8 @@ export function SettingsPage() {
     }
   }, [])
 
-  async function addAppToStoplist() {
-    const value = newAppName.trim()
+  async function addStoplistValue() {
+    const value = newStoplistValue.trim()
 
     if (!value) {
       return
@@ -110,22 +113,27 @@ export function SettingsPage() {
 
     if (
       stoplist.some(
-        (item) => item.item_type === "app" && item.value.toLowerCase() === value.toLowerCase(),
+        (item) =>
+          item.item_type === stoplistType && item.value.toLowerCase() === value.toLowerCase(),
       )
     ) {
-      setNewAppName("")
+      setNewStoplistValue("")
       return
     }
 
     try {
-      const nextItem = await addStoplistItem({ item_type: "app", value })
+      const nextItem = await addStoplistItem({ item_type: stoplistType, value })
       setStoplist((current) =>
         [...current, nextItem].sort((left, right) => left.value.localeCompare(right.value)),
       )
-      setNewAppName("")
+      setNewStoplistValue("")
       setError(null)
     } catch {
-      setError("Не удалось добавить приложение в стоп-лист")
+      setError(
+        stoplistType === "app"
+          ? "Не удалось добавить приложение в стоп-лист"
+          : "Не удалось добавить сайт в стоп-лист",
+      )
     }
   }
 
@@ -135,7 +143,7 @@ export function SettingsPage() {
       setStoplist((current) => current.filter((item) => item.id !== id))
       setError(null)
     } catch {
-      setError("Не удалось удалить приложение из стоп-листа")
+      setError("Не удалось удалить элемент из стоп-листа")
     }
   }
 
@@ -301,31 +309,60 @@ export function SettingsPage() {
           </SettingsCard>
 
           <SettingsCard
-            description="Эти процессы не попадают в лог активности."
+            description="Здесь можно исключать как процессы, так и сайты, которые не должны попадать в трекинг и browser bridge."
             icon={Workflow}
-            title="Стоп-лист приложений"
+            title="Стоп-лист"
           >
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "app", label: "Приложение" },
+                { id: "site", label: "Сайт" },
+              ].map((option) => {
+                const active = stoplistType === option.id
+
+                return (
+                  <button
+                    className={`rounded-full border px-4 py-2 text-sm transition ${
+                      active
+                        ? "border-[#9DC3AC] bg-[#EEF7F0] text-[#264034] shadow-[0_6px_18px_rgba(123,166,139,0.18)]"
+                        : "border-[#DCE7DE] bg-white text-[#73867A] hover:border-[#C4D8C8] hover:text-[#355344]"
+                    }`}
+                    key={option.id}
+                    onClick={() => setStoplistType(option.id as "app" | "site")}
+                    type="button"
+                  >
+                    {option.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 flex gap-2">
               <input
                 className="h-11 min-w-0 flex-1 rounded-[16px] border border-[#DCE7DE] bg-white px-4 text-sm outline-none transition focus:border-[#9DC3AC] focus:ring-4 focus:ring-[#DDEDE2]"
-                onChange={(event) => setNewAppName(event.target.value)}
+                onChange={(event) => setNewStoplistValue(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "Enter") {
-                    void addAppToStoplist()
+                    void addStoplistValue()
                   }
                 }}
-                placeholder="process.exe"
-                value={newAppName}
+                placeholder={stoplistType === "app" ? "process.exe" : "youtube.com"}
+                value={newStoplistValue}
               />
-              <Button className="rounded-full px-4" onClick={() => void addAppToStoplist()} type="button">
+              <Button className="rounded-full px-4" onClick={() => void addStoplistValue()} type="button">
                 Добавить
               </Button>
             </div>
+            <p className="mt-3 text-sm leading-6 text-[#71837A]">
+              {stoplistType === "app"
+                ? "Для приложений используй имя процесса, например telegram.exe или discord.exe."
+                : "Для сайтов достаточно части домена, например youtube.com, vk.com или reddit.com."}
+            </p>
 
             <div className="mt-4 space-y-3">
               {stoplist.length === 0 && (
                 <StateCard
-                  description="Добавь сюда процессы, которые не должны попадать в лог активности."
+                  description="Добавь сюда процессы или домены, которые не должны попадать в локальный лог активности."
                   title="Стоп-лист пока пуст"
                   variant="empty"
                 />
