@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRight, Sparkles, X } from "lucide-react"
+import { ArrowRight, LoaderCircle, Sparkles, X } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
 import { DayTimeline, type HourTimelineRow } from "@/components/dashboard/DayTimeline"
@@ -50,6 +50,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const [llmLoading, setLlmLoading] = useState(false)
   const [llmError, setLlmError] = useState<string | null>(null)
   const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
+  const [llmSummaryDateKey, setLlmSummaryDateKey] = useState<string | null>(null)
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const [selectedHour, setSelectedHour] = useState<SelectedHour | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
@@ -138,9 +139,12 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   useEffect(() => {
     let active = true
 
-    setLlmFlows(null)
-    setLlmCachedAt(null)
-    setLlmError(null)
+    if (llmSummaryDateKey !== selectedDateKey) {
+      setLlmFlows(null)
+      setLlmCachedAt(null)
+      setLlmError(null)
+      setLlmSummaryDateKey(selectedDateKey)
+    }
 
     async function loadCachedSummary() {
       if (llmPayload.items.length === 0) {
@@ -162,6 +166,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         const groups = parseStoredLlmGroups(cachedSummary.groups_json)
         setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
         setLlmCachedAt(cachedSummary.created_at)
+        setLlmSummaryDateKey(selectedDateKey)
       } catch {
         if (active) {
           setLlmError("Не удалось загрузить сохраненную группировку дня")
@@ -174,7 +179,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     return () => {
       active = false
     }
-  }, [llmCacheSignature, llmPayload, llmSettings])
+  }, [llmCacheSignature, llmPayload, llmSettings, llmSummaryDateKey, selectedDateKey])
 
   async function generateLlmSummary() {
     setLlmLoading(true)
@@ -184,6 +189,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       const groups = await requestOllamaSummary(llmPayload, llmSettings)
       const nextFlows = buildFlowsFromLlmGroups(llmPayload, groups)
       setLlmFlows(nextFlows)
+      setLlmSummaryDateKey(selectedDateKey)
 
       try {
         const savedSummary = await saveLlmSummary({
@@ -194,6 +200,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
           groups_json: serializeLlmGroups(groups),
         })
         setLlmCachedAt(savedSummary.created_at)
+        setLlmError(null)
       } catch {
         setLlmError("Группировка получена, но не сохранилась в локальную базу")
       }
@@ -311,9 +318,22 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             size="lg"
             type="button"
           >
-            <Sparkles className="size-4" />
+            {llmLoading ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
             {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
           </Button>
+
+          {llmLoading && (
+            <div className="mt-3 rounded-[18px] border border-[#E2EBE4] bg-[#FBFDFB] px-4 py-3">
+              <div className="flex items-center gap-2 text-sm text-[#5C7065]">
+                <LoaderCircle className="size-4 animate-spin" />
+                <span>????????? ?????? ???????? ?????? ???. ??? ????? ?????? ?? ??????-????????.</span>
+              </div>
+            </div>
+          )}
 
           <div className="mt-4 space-y-3">
             {flows.length === 0 && (

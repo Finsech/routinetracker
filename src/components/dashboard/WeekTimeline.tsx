@@ -109,7 +109,7 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
                 >
                   <div className="absolute inset-0 overflow-hidden rounded-[999px]">
                     {bar.segments.map((segment) => {
-                      const bottom = (segment.startOffsetMinutes / DAY_RANGE_MINUTES) * 100
+                      const top = (segment.startOffsetMinutes / DAY_RANGE_MINUTES) * 100
                       const height = (segment.durationMinutes / DAY_RANGE_MINUTES) * 100
 
                       return (
@@ -117,13 +117,13 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
                           className="absolute inset-x-0"
                           key={`${segment.id}-visual`}
                           style={{
-                            bottom: `${bottom}%`,
+                            top: `${top}%`,
                             height: `${height}%`,
                             backgroundColor: tint(segment.accent, 0.35),
                           }}
                         >
                           <span
-                            className="absolute inset-x-0 top-0 h-[3px]"
+                            className="absolute inset-x-0 bottom-0 h-[3px]"
                             style={{ backgroundColor: segment.accent }}
                           />
                         </div>
@@ -133,7 +133,7 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
 
                   <div className="absolute inset-0 overflow-visible">
                     {bar.segments.map((segment) => {
-                      const bottom = (segment.startOffsetMinutes / DAY_RANGE_MINUTES) * 100
+                      const top = (segment.startOffsetMinutes / DAY_RANGE_MINUTES) * 100
                       const height = Math.max((segment.durationMinutes / DAY_RANGE_MINUTES) * 100, 1.2)
                       const hovered =
                         hoveredSegment?.dayKey === day.dateKey &&
@@ -147,7 +147,7 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
                           onMouseEnter={() => openTooltip(day.dateKey, segment.id)}
                           onMouseLeave={() => closeTooltipSoon(segment.id)}
                           style={{
-                            bottom: `${bottom}%`,
+                            top: `${top}%`,
                             height: `${height}%`,
                           }}
                         >
