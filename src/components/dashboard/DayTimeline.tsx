@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 
 import { StateCard } from "@/components/app/StateCard"
 import type { FlowSummary, TimelineItem } from "@/types"
@@ -50,10 +50,30 @@ export function DayTimeline({
   onHourSelect,
 }: DayTimelineProps) {
   const [hoveredSegment, setHoveredSegment] = useState<HoveredSegment | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
   const visibleItems = items.filter(
     (item) => item.endMinutes > START_HOUR * 60 && item.startMinutes < END_HOUR * 60,
   )
   const rows = useMemo(() => buildHourTimelineRows(visibleItems), [visibleItems])
+
+  function clearCloseTimer() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  function openTooltip(rowHour: number, segmentId: string) {
+    clearCloseTimer()
+    setHoveredSegment({ rowHour, segmentId })
+  }
+
+  function closeTooltipSoon(segmentId: string) {
+    clearCloseTimer()
+    closeTimerRef.current = window.setTimeout(() => {
+      setHoveredSegment((current) => (current?.segmentId === segmentId ? null : current))
+    }, 180)
+  }
 
   return (
     <section className="rounded-[28px] border border-white/70 bg-white/85 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)] backdrop-blur">
@@ -90,7 +110,7 @@ export function DayTimeline({
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-[24px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]">
+        <div className="overflow-visible rounded-[24px] border border-[#E1EBE3] bg-[linear-gradient(180deg,#fffdf9_0%,#fffdfa_100%)]">
           {visibleItems.length === 0 ? (
             <div className="flex min-h-[360px] items-center justify-center px-8 py-10">
               <div className="w-full max-w-md">
@@ -176,14 +196,8 @@ export function DayTimeline({
                           <div
                             className="absolute inset-y-0"
                             key={`${segment.id}-hitbox`}
-                            onMouseEnter={() =>
-                              setHoveredSegment({ rowHour: row.hour, segmentId: segment.id })
-                            }
-                            onMouseLeave={() =>
-                              setHoveredSegment((current) =>
-                                current?.segmentId === segment.id ? null : current,
-                              )
-                            }
+                            onMouseEnter={() => openTooltip(row.hour, segment.id)}
+                            onMouseLeave={() => closeTooltipSoon(segment.id)}
                             style={{
                               left: `${left}%`,
                               width: `${width}%`,
@@ -191,18 +205,16 @@ export function DayTimeline({
                           >
                             {hovered && (
                               <div
-                                className={`absolute top-[calc(100%+10px)] z-30 w-[320px] rounded-[20px] border border-[#DCE7DE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(73,97,84,0.18)] ${
-                                  tooltipPosition === "start"
-                                    ? "left-0"
+                              className={`absolute top-[calc(100%+10px)] z-30 w-[320px] rounded-[20px] border border-[#DCE7DE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(73,97,84,0.18)] ${
+                                tooltipPosition === "start"
+                                  ? "left-0"
                                     : tooltipPosition === "end"
                                       ? "right-0"
                                       : "left-1/2 -translate-x-1/2"
-                                }`}
-                                onMouseEnter={() =>
-                                  setHoveredSegment({ rowHour: row.hour, segmentId: segment.id })
-                                }
-                                onMouseLeave={() => setHoveredSegment(null)}
-                              >
+                              }`}
+                              onMouseEnter={() => openTooltip(row.hour, segment.id)}
+                              onMouseLeave={() => closeTooltipSoon(segment.id)}
+                            >
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-medium text-[#24382F]">
                                     {segment.label}

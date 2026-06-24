@@ -17,6 +17,7 @@ export type LlmSummaryItem = {
   start_time: string
   end_time: string
   duration_minutes: number
+  episodes?: number
 }
 
 export type LlmSummaryPayload = {
@@ -98,18 +99,20 @@ export function buildLlmSummaryPayload(
   idleLogs: IdleLogRecord[],
   date = new Date(),
 ): LlmSummaryPayload {
-  const activeItems = logs
-    .filter((log) => isSameDay(new Date(log.start_time), date))
-    .map((log) => ({
-      app: log.app_name,
-      end_time: log.end_time,
-      kind: "activity" as const,
-      note: null,
-      start_time: log.start_time,
-      title: log.window_title,
-      url: log.url,
-      duration_minutes: roundMinutes(durationMinutes(log)),
-    }))
+  const activeItems = collapseActivityLogsForLlm(
+    logs
+      .filter((log) => isSameDay(new Date(log.start_time), date))
+      .map((log) => ({
+        app: log.app_name,
+        end_time: log.end_time,
+        kind: "activity" as const,
+        note: null,
+        start_time: log.start_time,
+        title: log.window_title,
+        url: log.url,
+        duration_minutes: roundMinutes(durationMinutes(log)),
+      })),
+  )
   const idleItems = idleLogs
     .filter((log) => !log.ignored && isSameDay(new Date(log.start_time), date))
     .map((log) => ({
@@ -118,9 +121,10 @@ export function buildLlmSummaryPayload(
       kind: "idle" as const,
       note: log.note,
       start_time: log.start_time,
-      title: log.note || "Простой",
+      title: log.note || "???????",
       url: null,
       duration_minutes: roundMinutes(durationMinutes(log)),
+      episodes: 1,
     }))
   const items = [...activeItems, ...idleItems]
     .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
@@ -139,6 +143,37 @@ export function buildLlmSummaryPayload(
     ),
     items,
   }
+}
+
+type DraftLlmActivity = Omit<LlmSummaryItem, "index">
+
+function collapseActivityLogsForLlm(logs: DraftLlmActivity[]) {
+  const grouped = new Map<string, DraftLlmActivity>()
+
+  for (const item of logs) {
+    const contextKey = item.url ? `site:${safeHostname(item.url)}` : `app:${item.app.toLowerCase()}`
+    const existing = grouped.get(contextKey)
+
+    if (existing) {
+      existing.duration_minutes = roundMinutes(existing.duration_minutes + item.duration_minutes)
+      existing.end_time = laterTime(existing.end_time, item.end_time)
+      existing.start_time = earlierTime(existing.start_time, item.start_time)
+      existing.episodes = (existing.episodes ?? 1) + 1
+      if (!existing.title && item.title) {
+        existing.title = item.title
+      }
+      continue
+    }
+
+    grouped.set(contextKey, {
+      ...item,
+      title: item.url ? safeHostname(item.url) : item.app,
+      url: item.url ? `https://${safeHostname(item.url)}` : item.url,
+      episodes: 1,
+    })
+  }
+
+  return [...grouped.values()]
 }
 
 export function stringifyLlmPayload(payload: LlmSummaryPayload) {
@@ -381,6 +416,7 @@ Rules:
 - Use concise stream_name values. Russian stream names are allowed when the input is Russian.
 - Treat idle items with a note as normal user activity.
 - Put idle items without a note into Routine.
+- Input items may already summarize multiple short episodes of the same context.
 
 Input:
 ${JSON.stringify(compactItems, null, 2)}`
@@ -525,4 +561,21 @@ function roundMinutes(value: number) {
 
 function timeValue(value: string) {
   return new Date(value).getTime()
+}
+
+
+function safeHostname(value: string) {
+  try {
+    return new URL(value).hostname.replace(/^www\./i, "")
+  } catch {
+    return value
+  }
+}
+
+function earlierTime(left: string, right: string) {
+  return timeValue(left) <= timeValue(right) ? left : right
+}
+
+function laterTime(left: string, right: string) {
+  return timeValue(left) >= timeValue(right) ? left : right
 }

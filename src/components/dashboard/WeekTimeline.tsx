@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 
 import { formatMinutes } from "@/lib/activity-analytics"
 import type { TimelineItem, WeekTimelineDay } from "@/types"
@@ -37,6 +37,7 @@ const DAY_RANGE_MINUTES = (22 - 9) * 60
 
 export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimelineProps) {
   const [hoveredSegment, setHoveredSegment] = useState<HoveredWeekSegment | null>(null)
+  const closeTimerRef = useRef<number | null>(null)
   const dayBars = useMemo(
     () =>
       days.map((day) => ({
@@ -45,6 +46,25 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
       })),
     [days],
   )
+
+  function clearCloseTimer() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current)
+      closeTimerRef.current = null
+    }
+  }
+
+  function openTooltip(dayKey: string, segmentId: string) {
+    clearCloseTimer()
+    setHoveredSegment({ dayKey, segmentId })
+  }
+
+  function closeTooltipSoon(segmentId: string) {
+    clearCloseTimer()
+    closeTimerRef.current = window.setTimeout(() => {
+      setHoveredSegment((current) => (current?.segmentId === segmentId ? null : current))
+    }, 180)
+  }
 
   return (
     <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)] backdrop-blur">
@@ -124,14 +144,8 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
                         <div
                           className="absolute inset-x-0"
                           key={`${segment.id}-hitbox`}
-                          onMouseEnter={() =>
-                            setHoveredSegment({ dayKey: day.dateKey, segmentId: segment.id })
-                          }
-                          onMouseLeave={() =>
-                            setHoveredSegment((current) =>
-                              current?.segmentId === segment.id ? null : current,
-                            )
-                          }
+                          onMouseEnter={() => openTooltip(day.dateKey, segment.id)}
+                          onMouseLeave={() => closeTooltipSoon(segment.id)}
                           style={{
                             bottom: `${bottom}%`,
                             height: `${height}%`,
@@ -142,10 +156,8 @@ export function WeekTimeline({ days, selectedDayKey, onDaySelect }: WeekTimeline
                               className={`absolute top-1/2 z-50 w-[320px] -translate-y-1/2 rounded-[20px] border border-[#DCE7DE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(73,97,84,0.18)] ${
                                 tooltipPosition === "start" ? "left-[calc(100%+12px)]" : "right-[calc(100%+12px)]"
                               }`}
-                              onMouseEnter={() =>
-                                setHoveredSegment({ dayKey: day.dateKey, segmentId: segment.id })
-                              }
-                              onMouseLeave={() => setHoveredSegment(null)}
+                              onMouseEnter={() => openTooltip(day.dateKey, segment.id)}
+                              onMouseLeave={() => closeTooltipSoon(segment.id)}
                             >
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-medium text-[#24382F]">
