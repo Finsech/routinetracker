@@ -24,6 +24,7 @@ export type DayTimelineSegment = {
   flow: string
   url?: string | null
   details: TimelineItem[]
+  startOffsetMinutes: number
 }
 
 export type HourTimelineRow = {
@@ -31,6 +32,11 @@ export type HourTimelineRow = {
   label: string
   segments: DayTimelineSegment[]
   coveredMinutes: number
+}
+
+type HoveredSegment = {
+  rowHour: number
+  segmentId: string
 }
 
 const START_HOUR = 9
@@ -43,7 +49,7 @@ export function DayTimeline({
   selectedHour,
   onHourSelect,
 }: DayTimelineProps) {
-  const [hoveredSegmentId, setHoveredSegmentId] = useState<string | null>(null)
+  const [hoveredSegment, setHoveredSegment] = useState<HoveredSegment | null>(null)
   const visibleItems = items.filter(
     (item) => item.endMinutes > START_HOUR * 60 && item.startMinutes < END_HOUR * 60,
   )
@@ -99,34 +105,35 @@ export function DayTimeline({
             <div className="divide-y divide-[#EDE8E0]">
               {rows.map((row) => (
                 <button
-                  className={`grid min-h-[52px] grid-cols-[minmax(0,1fr)] items-center px-3 py-2 text-left transition ${
+                  className={`block min-h-[52px] w-full px-3 py-2 text-left transition ${
                     selectedHour === row.hour ? "bg-[#F7FBF7]" : "hover:bg-[#FBFDFB]"
                   }`}
                   key={row.hour}
                   onClick={() => onHourSelect?.(row)}
                   type="button"
                 >
-                  <div className="relative h-[32px] overflow-visible">
+                  <div className="relative h-[32px] w-full">
                     <div
-                      className={`flex h-full items-stretch overflow-hidden rounded-full border ${
+                      className={`absolute inset-0 rounded-full border ${
                         selectedHour === row.hour
                           ? "border-[#BFD8C7] bg-[#F3F9F3]"
                           : "border-[#E6EEE7] bg-[#F7FAF7]"
                       }`}
-                    >
+                    />
+
+                    <div className="absolute inset-0 overflow-hidden rounded-full">
                       {row.segments.map((segment) => {
-                        const widthPercent = (segment.durationMinutes / 60) * 100
-                        const hovered = hoveredSegmentId === segment.id
+                        const left = (segment.startOffsetMinutes / 60) * 100
+                        const width = (segment.durationMinutes / 60) * 100
 
                         return (
                           <div
-                            className="group relative h-full min-w-0 border-r border-white/60 last:border-r-0"
-                            key={segment.id}
-                            onMouseEnter={() => setHoveredSegmentId(segment.id)}
-                            onMouseLeave={() => setHoveredSegmentId((current) => (current === segment.id ? null : current))}
+                            className="absolute inset-y-0 min-w-0 border-r border-white/70 last:border-r-0"
+                            key={`${segment.id}-visual`}
                             style={{
+                              left: `${left}%`,
+                              width: `${width}%`,
                               backgroundColor: tint(segment.accent, 0.28),
-                              width: `${widthPercent}%`,
                             }}
                           >
                             <span
@@ -134,10 +141,10 @@ export function DayTimeline({
                               style={{ backgroundColor: segment.accent }}
                             />
                             <div className="flex h-full items-center justify-between gap-2 px-3 text-[12px] text-[#264034]">
-                              {widthPercent >= 12 ? (
+                              {width >= 12 ? (
                                 <>
                                   <span className="truncate font-medium">{segment.label}</span>
-                                  {widthPercent >= 20 && (
+                                  {width >= 20 && (
                                     <span className="shrink-0 text-[#557064]">
                                       {formatCompactMinutes(segment.durationMinutes)}
                                     </span>
@@ -149,16 +156,61 @@ export function DayTimeline({
                                 </span>
                               )}
                             </div>
+                          </div>
+                        )
+                      })}
+                    </div>
 
+                    <div className="absolute inset-0">
+                      {row.segments.map((segment) => {
+                        const left = (segment.startOffsetMinutes / 60) * 100
+                        const width = Math.max((segment.durationMinutes / 60) * 100, 1.4)
+                        const hovered =
+                          hoveredSegment?.rowHour === row.hour &&
+                          hoveredSegment.segmentId === segment.id
+                        const tooltipPosition = resolveTooltipPosition(
+                          left + width / 2,
+                        )
+
+                        return (
+                          <div
+                            className="absolute inset-y-0"
+                            key={`${segment.id}-hitbox`}
+                            onMouseEnter={() =>
+                              setHoveredSegment({ rowHour: row.hour, segmentId: segment.id })
+                            }
+                            onMouseLeave={() =>
+                              setHoveredSegment((current) =>
+                                current?.segmentId === segment.id ? null : current,
+                              )
+                            }
+                            style={{
+                              left: `${left}%`,
+                              width: `${width}%`,
+                            }}
+                          >
                             {hovered && (
-                              <div className="absolute left-1/2 top-[calc(100%+8px)] z-20 w-[320px] -translate-x-1/2 rounded-[20px] border border-[#DCE7DE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(73,97,84,0.18)]">
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="truncate text-sm font-medium text-[#24382F]">{segment.label}</p>
-                                    <p className="mt-1 text-xs text-[#75877E]">
-                                      {segment.episodes} эпизодов • {formatCompactMinutes(segment.durationMinutes)}
-                                    </p>
-                                  </div>
+                              <div
+                                className={`absolute top-[calc(100%+10px)] z-30 w-[320px] rounded-[20px] border border-[#DCE7DE] bg-white p-4 text-left shadow-[0_18px_50px_rgba(73,97,84,0.18)] ${
+                                  tooltipPosition === "start"
+                                    ? "left-0"
+                                    : tooltipPosition === "end"
+                                      ? "right-0"
+                                      : "left-1/2 -translate-x-1/2"
+                                }`}
+                                onMouseEnter={() =>
+                                  setHoveredSegment({ rowHour: row.hour, segmentId: segment.id })
+                                }
+                                onMouseLeave={() => setHoveredSegment(null)}
+                              >
+                                <div className="min-w-0">
+                                  <p className="truncate text-sm font-medium text-[#24382F]">
+                                    {segment.label}
+                                  </p>
+                                  <p className="mt-1 text-xs text-[#75877E]">
+                                    {segment.episodes} эпизодов •{" "}
+                                    {formatCompactMinutes(segment.durationMinutes)}
+                                  </p>
                                 </div>
 
                                 <div className="mt-3 h-[300px] overflow-y-auto rounded-[14px] border border-[#E8EFE9] bg-[#FBFDFB] p-2">
@@ -168,8 +220,12 @@ export function DayTimeline({
                                         className="rounded-[12px] border border-[#E7EFE9] bg-white px-3 py-2"
                                         key={`${segment.id}-${detail.startMinutes}-${detail.endMinutes}-${index}`}
                                       >
-                                        <p className="truncate text-xs font-medium text-[#274034]">{detail.label}</p>
-                                        <p className="mt-1 text-[11px] text-[#7A8C83]">{detail.app}</p>
+                                        <p className="truncate text-xs font-medium text-[#274034]">
+                                          {detail.label}
+                                        </p>
+                                        <p className="mt-1 text-[11px] text-[#7A8C83]">
+                                          {detail.app}
+                                        </p>
                                         <p className="mt-1 text-[11px] text-[#87978F]">
                                           {detail.start} - {detail.end}
                                         </p>
@@ -182,13 +238,6 @@ export function DayTimeline({
                           </div>
                         )
                       })}
-
-                      {row.coveredMinutes < 60 && (
-                        <div
-                          className="h-full bg-transparent"
-                          style={{ width: `${((60 - row.coveredMinutes) / 60) * 100}%` }}
-                        />
-                      )}
                     </div>
                   </div>
                 </button>
@@ -206,7 +255,7 @@ function buildHourTimelineRows(items: TimelineItem[]): HourTimelineRow[] {
     const hour = START_HOUR + index
     const bucketStart = hour * 60
     const bucketEnd = (hour + 1) * 60
-    const segmentsMap = new Map<string, DayTimelineSegment>()
+    const segmentsMap = new Map<string, Omit<DayTimelineSegment, "startOffsetMinutes">>()
 
     for (const item of items) {
       const overlapStart = Math.max(item.startMinutes, bucketStart)
@@ -245,14 +294,21 @@ function buildHourTimelineRows(items: TimelineItem[]): HourTimelineRow[] {
       })
     }
 
-    const segments = [...segmentsMap.values()]
-    const coveredMinutes = segments.reduce((sum, segment) => sum + segment.durationMinutes, 0)
+    let offset = 0
+    const segments = [...segmentsMap.values()].map((segment) => {
+      const nextSegment: DayTimelineSegment = {
+        ...segment,
+        startOffsetMinutes: offset,
+      }
+      offset += segment.durationMinutes
+      return nextSegment
+    })
 
     return {
       hour,
       label: formatHour(hour),
       segments,
-      coveredMinutes,
+      coveredMinutes: offset,
     }
   })
 }
@@ -278,6 +334,18 @@ function resolveContext(item: TimelineItem) {
     key: `app:${item.app.toLowerCase()}`,
     label: item.app,
   }
+}
+
+function resolveTooltipPosition(centerPercent: number) {
+  if (centerPercent < 18) {
+    return "start"
+  }
+
+  if (centerPercent > 82) {
+    return "end"
+  }
+
+  return "center"
 }
 
 function laterClock(left: string, right: string) {

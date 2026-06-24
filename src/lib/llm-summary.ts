@@ -187,28 +187,36 @@ export async function requestOllamaSummary(
   let data: OllamaGenerateResponse
 
   if (isTauriRuntime()) {
-    data = await requestOllamaGenerate({
-      baseUrl: normalizeOllamaUrl(settings.ollamaUrl),
-      model: settings.model,
-      prompt: buildLlmPrompt(payload),
-      format: LLM_RESPONSE_SCHEMA,
-    })
-  } else {
-    const response = await fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    data = await withTimeout(
+      requestOllamaGenerate({
+        baseUrl: normalizeOllamaUrl(settings.ollamaUrl),
         model: settings.model,
         prompt: buildLlmPrompt(payload),
-        stream: false,
         format: LLM_RESPONSE_SCHEMA,
-        options: {
-          temperature: 0,
-        },
       }),
-    })
+      90_000,
+      "Ollama слишком долго не отвечает",
+    )
+  } else {
+    const response = await withTimeout(
+      fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          prompt: buildLlmPrompt(payload),
+          stream: false,
+          format: LLM_RESPONSE_SCHEMA,
+          options: {
+            temperature: 0,
+          },
+        }),
+      }),
+      90_000,
+      "Ollama слишком долго не отвечает",
+    )
 
     if (!response.ok) {
       const details = await response.text()
@@ -452,6 +460,22 @@ function normalizeOllamaUrl(value: string) {
 
 function isTauriRuntime() {
   return "__TAURI_INTERNALS__" in window
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string) {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), timeoutMs)
+
+    promise
+      .then((result) => {
+        window.clearTimeout(timer)
+        resolve(result)
+      })
+      .catch((error) => {
+        window.clearTimeout(timer)
+        reject(error)
+      })
+  })
 }
 
 function settingValue(settings: { key: string; value: string }[], key: string, fallback: string) {
