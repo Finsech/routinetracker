@@ -38,7 +38,18 @@ type SelectedHour = {
   row: HourTimelineRow
 }
 
+type TodayLlmViewState = {
+  flows: FlowSummary[] | null
+  cachedAt: string | null
+  error: string | null
+  summaryDateKey: string | null
+}
+
+const todayLlmViewCache = new Map<string, TodayLlmViewState>()
+
 export function TodayPage({ selectedDate }: { selectedDate: Date }) {
+  const selectedDateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate])
+  const initialLlmState = readTodayLlmViewState(selectedDateKey)
   const [logs, setLogs] = useState<ActivityLogRecord[]>([])
   const [idleLogs, setIdleLogs] = useState<IdleLogRecord[]>([])
   const [loading, setLoading] = useState(true)
@@ -46,15 +57,16 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const [idleNote, setIdleNote] = useState("")
   const [postponedIdleIds, setPostponedIdleIds] = useState<number[]>([])
   const [llmSettings, setLlmSettings] = useState<LlmProviderSettings>(DEFAULT_LLM_SETTINGS)
-  const [llmFlows, setLlmFlows] = useState<FlowSummary[] | null>(null)
+  const [llmFlows, setLlmFlows] = useState<FlowSummary[] | null>(initialLlmState.flows)
   const [llmLoading, setLlmLoading] = useState(false)
-  const [llmError, setLlmError] = useState<string | null>(null)
-  const [llmCachedAt, setLlmCachedAt] = useState<string | null>(null)
-  const [llmSummaryDateKey, setLlmSummaryDateKey] = useState<string | null>(null)
+  const [llmError, setLlmError] = useState<string | null>(initialLlmState.error)
+  const [llmCachedAt, setLlmCachedAt] = useState<string | null>(initialLlmState.cachedAt)
+  const [llmSummaryDateKey, setLlmSummaryDateKey] = useState<string | null>(
+    initialLlmState.summaryDateKey,
+  )
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const [selectedHour, setSelectedHour] = useState<SelectedHour | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
-  const selectedDateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate])
   const todayDateKey = useMemo(() => formatDateKey(new Date()), [])
   const pendingIdleLog = useMemo(() => {
     if (selectedDateKey !== todayDateKey) {
@@ -137,17 +149,37 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   }, [])
 
   useEffect(() => {
-    let active = true
+    const cachedState = readTodayLlmViewState(selectedDateKey)
+    setLlmFlows(cachedState.flows)
+    setLlmCachedAt(cachedState.cachedAt)
+    setLlmError(cachedState.error)
+    setLlmSummaryDateKey(cachedState.summaryDateKey)
+  }, [selectedDateKey])
 
-    if (llmSummaryDateKey !== selectedDateKey) {
-      setLlmFlows(null)
-      setLlmCachedAt(null)
-      setLlmError(null)
-      setLlmSummaryDateKey(selectedDateKey)
+  useEffect(() => {
+    if (llmSummaryDateKey !== null && llmSummaryDateKey !== selectedDateKey) {
+      return
     }
+
+    writeTodayLlmViewState(selectedDateKey, {
+      cachedAt: llmCachedAt,
+      error: llmError,
+      flows: llmFlows,
+      summaryDateKey: llmSummaryDateKey,
+    })
+  }, [llmCachedAt, llmError, llmFlows, llmSummaryDateKey, selectedDateKey])
+
+  useEffect(() => {
+    let active = true
 
     async function loadCachedSummary() {
       if (llmPayload.items.length === 0) {
+        return
+      }
+
+      const cachedState = readTodayLlmViewState(selectedDateKey)
+
+      if (cachedState.flows || cachedState.cachedAt || cachedState.error) {
         return
       }
 
@@ -166,6 +198,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         const groups = parseStoredLlmGroups(cachedSummary.groups_json)
         setLlmFlows(buildFlowsFromLlmGroups(llmPayload, groups))
         setLlmCachedAt(cachedSummary.created_at)
+        setLlmError(null)
         setLlmSummaryDateKey(selectedDateKey)
       } catch {
         if (active) {
@@ -667,4 +700,28 @@ function formatDateKey(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0")
   const day = String(value.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+function readTodayLlmViewState(dateKey: string): TodayLlmViewState {
+  return (
+    todayLlmViewCache.get(dateKey) ?? {
+      flows: null,
+      cachedAt: null,
+      error: null,
+      summaryDateKey: null,
+    }
+  )
+}
+
+function writeTodayLlmViewState(dateKey: string, state: TodayLlmViewState) {
+  const hasContent = Boolean(
+    state.flows || state.cachedAt || state.error || state.summaryDateKey,
+  )
+
+  if (!hasContent) {
+    todayLlmViewCache.delete(dateKey)
+    return
+  }
+
+  todayLlmViewCache.set(dateKey, state)
 }

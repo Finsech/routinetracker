@@ -1,4 +1,4 @@
-import type { ReactNode } from "react"
+﻿import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
 import {
   BarChart3,
@@ -29,17 +29,17 @@ const initialTrackerStatus: TrackerStatusRecord = {
 }
 
 const navItems: NavItem[] = [
-  { id: "today", label: "Сегодня", icon: LayoutList },
-  { id: "week", label: "Неделя", icon: CalendarDays },
-  { id: "analytics", label: "Аналитика", icon: BarChart3 },
-  { id: "settings", label: "Настройки", icon: Settings },
+  { id: "today", label: "РЎРµРіРѕРґРЅСЏ", icon: LayoutList },
+  { id: "analytics", label: "РђРЅР°Р»РёР· РґРЅСЏ", icon: BarChart3 },
+  { id: "week", label: "РќРµРґРµР»СЏ", icon: CalendarDays },
+  { id: "settings", label: "РќР°СЃС‚СЂРѕР№РєРё", icon: Settings },
 ]
 
 const viewTitles: Record<View, string> = {
-  today: "Сегодня",
-  week: "Неделя",
-  analytics: "Аналитика",
-  settings: "Настройки",
+  today: "РЎРµРіРѕРґРЅСЏ",
+  week: "РќРµРґРµР»СЏ",
+  analytics: "РђРЅР°Р»РёР· РґРЅСЏ",
+  settings: "РќР°СЃС‚СЂРѕР№РєРё",
 }
 
 type AppShellProps = {
@@ -186,12 +186,12 @@ export function AppShell({
                 variant={trackerRunning ? "outline" : "default"}
               >
                 {trackerRunning ? <Square className="size-4" /> : <Play className="size-4" />}
-                {trackerRunning ? "Пауза" : "Старт"}
+                {trackerRunning ? "РџР°СѓР·Р°" : "РЎС‚Р°СЂС‚"}
               </Button>
               {showDateControls && (
                 <div className="flex items-center gap-2 rounded-full border border-[#E5ECE6] bg-white/82 px-2 py-2">
                   <Button
-                    aria-label="Предыдущий период"
+                    aria-label="РџСЂРµРґС‹РґСѓС‰РёР№ РїРµСЂРёРѕРґ"
                     onClick={() => stepDate(-1)}
                     size="icon-sm"
                     type="button"
@@ -207,10 +207,10 @@ export function AppShell({
                     variant="outline"
                   >
                     <CalendarDays className="size-4" />
-                    Сегодня
+                    РЎРµРіРѕРґРЅСЏ
                   </Button>
                   <Button
-                    aria-label="Следующий период"
+                    aria-label="РЎР»РµРґСѓСЋС‰РёР№ РїРµСЂРёРѕРґ"
                     onClick={() => stepDate(1)}
                     size="icon-sm"
                     type="button"
@@ -249,7 +249,7 @@ export function AppShell({
 
 function formatCurrentActivity(status: TrackerStatusRecord) {
   if (!status.current_app) {
-    return "Трекер ждет активную сессию"
+    return "РўСЂРµРєРµСЂ Р¶РґРµС‚ Р°РєС‚РёРІРЅСѓСЋ СЃРµСЃСЃРёСЋ"
   }
 
   if (!status.current_window_title) {
@@ -266,16 +266,16 @@ function formatCurrentActivity(status: TrackerStatusRecord) {
 
 function formatIdleTime(seconds: number) {
   if (seconds <= 0) {
-    return "Без простоя"
+    return "Р‘РµР· РїСЂРѕСЃС‚РѕСЏ"
   }
 
   if (seconds < 60) {
-    return `Простой ${seconds} с`
+    return `РџСЂРѕСЃС‚РѕР№ ${seconds} СЃ`
   }
 
   const minutes = Math.floor(seconds / 60)
   const restSeconds = seconds % 60
-  return `Простой ${minutes} мин ${restSeconds} с`
+  return `РџСЂРѕСЃС‚РѕР№ ${minutes} РјРёРЅ ${restSeconds} СЃ`
 }
 
 function formatHeaderDate(date: Date, view: View) {
