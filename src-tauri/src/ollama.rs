@@ -42,7 +42,7 @@ pub async fn request_ollama_generate(
     input: OllamaGenerateInput,
 ) -> Result<OllamaGenerateOutput, String> {
     let client = Client::builder()
-        .timeout(Duration::from_secs(180))
+        .timeout(Duration::from_secs(300))
         .build()
         .map_err(|error| format!("Не удалось подготовить HTTP-клиент Ollama: {error}"))?;
 

@@ -23,6 +23,7 @@
 - FocusFlow should behave as a single desktop instance: relaunching it must activate the existing hidden/tray instance instead of opening a duplicate copy.
 - LLM payload should preserve meaningful window and document titles, keep several examples per context, and carry explicit communication hints so project detection in `Работа` does not collapse into generic app/domain names.
 - Known messengers and their web versions should be treated as `Общение` by default: Telegram, Slack, WhatsApp, Discord, MAX, Yandex Messenger.
+- Long workdays must not overload local Ollama with hundreds of micro-contexts: before sending a daily payload, FocusFlow should keep the largest project-bearing contexts and merge the minor tail into compact synthetic buckets so manual `Собрать день` remains usable on local 7B-class models.
 
 FocusFlow - десктопное приложение для Windows 11, которое автоматически отслеживает экранное время, визуализирует активность и использует LLM для группировки действий по проектам и категориям.
 

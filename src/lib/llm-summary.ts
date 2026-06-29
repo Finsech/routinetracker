@@ -1,7 +1,7 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import { requestOllamaGenerate } from "@/lib/tauri-api"
 import type { FlowStreamActivity, FlowSummary } from "@/types"
-import { buildContextHints, type FlowHint } from "@/lib/context-taxonomy"
+import { buildContextHints, normalizeAppName, type FlowHint } from "@/lib/context-taxonomy"
 
 type TimeRangeRecord = {
   start_time: string
@@ -116,6 +116,10 @@ const GENERIC_STREAM_NAMES = new Set([
   "task",
 ])
 
+const MAX_LLM_ITEMS = 72
+const MIN_PROJECT_ITEM_MINUTES = 8
+const MAX_PROJECTS_PER_BASE_CONTEXT = 3
+
 export function buildLlmSummaryPayload(
   logs: ActivityLogRecord[],
   idleLogs: IdleLogRecord[],
@@ -160,7 +164,7 @@ export function buildLlmSummaryPayload(
       examples: log.note ? [log.note] : [],
     }))
 
-  const items = [...activeItems, ...idleItems]
+  const items = [...shrinkLlmItems(activeItems), ...idleItems]
     .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
     .map((item, index) => ({ ...item, index }))
 
@@ -207,6 +211,60 @@ function collapseActivityLogsForLlm(logs: DraftLlmActivity[]) {
   }
 
   return [...grouped.values()]
+}
+
+function shrinkLlmItems(items: DraftLlmActivity[]) {
+  if (items.length <= MAX_LLM_ITEMS) {
+    return items
+  }
+
+  const byBaseContext = new Map<string, DraftLlmActivity[]>()
+
+  for (const item of items) {
+    const baseKey = baseContextKey(item)
+    const bucket = byBaseContext.get(baseKey) ?? []
+    bucket.push(item)
+    byBaseContext.set(baseKey, bucket)
+  }
+
+  const reduced: DraftLlmActivity[] = []
+
+  for (const bucket of byBaseContext.values()) {
+    const sorted = [...bucket].sort((left, right) => right.duration_minutes - left.duration_minutes)
+    const keep: DraftLlmActivity[] = []
+    const merge: DraftLlmActivity[] = []
+
+    sorted.forEach((item, index) => {
+      const shouldKeep =
+        index < MAX_PROJECTS_PER_BASE_CONTEXT || item.duration_minutes >= MIN_PROJECT_ITEM_MINUTES
+
+      if (shouldKeep) {
+        keep.push(item)
+      } else {
+        merge.push(item)
+      }
+    })
+
+    reduced.push(...keep)
+
+    if (merge.length > 0) {
+      reduced.push(mergeMinorContexts(merge))
+    }
+  }
+
+  if (reduced.length <= MAX_LLM_ITEMS) {
+    return reduced
+  }
+
+  const sorted = [...reduced].sort((left, right) => right.duration_minutes - left.duration_minutes)
+  const kept = sorted.slice(0, MAX_LLM_ITEMS - 1)
+  const tail = sorted.slice(MAX_LLM_ITEMS - 1)
+
+  if (tail.length === 0) {
+    return kept
+  }
+
+  return [...kept, mergeMinorContexts(tail, "Прочие короткие контексты")]
 }
 
 export function stringifyLlmPayload(payload: LlmSummaryPayload) {
@@ -262,7 +320,7 @@ export async function requestOllamaSummary(
         prompt: buildLlmPrompt(payload),
         format: LLM_RESPONSE_SCHEMA,
       }),
-      90_000,
+      240_000,
       "Ollama слишком долго не отвечает",
     )
   } else {
@@ -282,7 +340,7 @@ export async function requestOllamaSummary(
           },
         }),
       }),
-      90_000,
+      240_000,
       "Ollama слишком долго не отвечает",
     )
 
@@ -705,6 +763,41 @@ function buildCollapseKey(item: DraftLlmActivity) {
   }
 
   return base
+}
+
+function baseContextKey(item: DraftLlmActivity) {
+  return item.domain ? `site:${item.domain}` : `app:${normalizeAppName(item.app)}`
+}
+
+function mergeMinorContexts(items: DraftLlmActivity[], explicitTitle?: string): DraftLlmActivity {
+  const sorted = [...items].sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
+  const first = sorted[0]!
+  const examples = sorted.flatMap((item) => item.examples ?? [])
+  const domain = first.domain
+
+  return {
+    ...first,
+    title: explicitTitle ?? buildMergedTitle(first),
+    url: domain ? `https://${domain}` : first.url,
+    domain,
+    duration_minutes: roundMinutes(
+      sorted.reduce((sum, item) => sum + item.duration_minutes, 0),
+    ),
+    start_time: sorted[0]!.start_time,
+    end_time: sorted[sorted.length - 1]!.end_time,
+    episodes: sorted.reduce((sum, item) => sum + (item.episodes ?? 1), 0),
+    examples: mergeExamples([], examples),
+  }
+}
+
+function buildMergedTitle(item: DraftLlmActivity) {
+  if (item.hint_flow === "Communication") {
+    return `Коммуникация в ${item.app.replace(/\.exe$/i, "")}`
+  }
+
+  return item.domain
+    ? `Прочие окна ${item.domain}`
+    : `Прочие окна ${item.app.replace(/\.exe$/i, "")}`
 }
 
 function slugify(value: string) {
