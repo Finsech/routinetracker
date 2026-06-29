@@ -1,45 +1,47 @@
 # Release Notes
 
-## FocusFlow 0.1.0
+## FocusFlow 0.1.1
 
-Дата фиксации релизного состояния: 2026-06-29
+Дата релиза: 2026-06-30
 
-### Что входит в релиз
+### Что вошло в обновление
 
-- desktop MVP на `Tauri + Rust + React`;
-- локальный трекинг активного окна;
-- browser bridge для URL и заголовков вкладок;
-- фиксация простоев с review-flow;
-- экраны `Сегодня`, `Анализ дня`, `Неделя`, `Настройки`;
-- LLM-группировка активности в потоки и стримы;
-- локальное хранение данных в SQLite;
-- stoplist для приложений и сайтов;
-- экспорт данных в JSON;
-- работа через system tray;
-- Windows installer и первый macOS CI artifact.
+- single-instance режим: повторный запуск приложения теперь разворачивает уже работающий экземпляр вместо второй копии;
+- улучшена LLM-группировка:
+  - payload сохраняет полезные заголовки документов, вкладок и страниц;
+  - в группировку передаются несколько примеров на контекст;
+  - добавлены явные подсказки для коммуникационных приложений и сайтов;
+  - добавлена защита от мусорных и иероглифических названий стримов;
+- усилена базовая классификация коммуникаций для:
+  - Telegram
+  - Slack
+  - WhatsApp
+  - Discord
+  - MAX
+  - Yandex Messenger
+  - и их web-версий.
 
 ### Что проверено
 
-- production frontend build: `npm run build`;
-- Rust-проверка: `cargo check`;
-- Windows desktop bundle build: `npm run tauri build`;
-- первый успешный GitHub Actions build на `macos-latest` с artifact `focusflow-macos-bundle`.
+- production frontend build: `npm run build`
+- Rust-проверка: `cargo check`
+- Windows desktop bundle build: `npm run tauri build`
 
 ### Windows-артефакты
 
 - `src-tauri/target/release/focusflow.exe`
-- `src-tauri/target/release/bundle/msi/FocusFlow_0.1.0_x64_en-US.msi`
-- `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.0_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/FocusFlow_0.1.1_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.1_x64-setup.exe`
 
 ### macOS
 
-- текущий macOS-результат собирается через GitHub Actions;
-- первый успешный artifact: `focusflow-macos-bundle`;
-- сборка пока unsigned и подходит для внутренней проверки;
-- для полноценного публичного macOS-релиза позже понадобятся signing и notarization.
+- macOS-сборка продолжает идти через GitHub Actions;
+- текущая сборка остается unsigned и подходит для внутренней проверки;
+- при публикации `0.1.1` можно прикладывать актуальный CI-артефакт как test build.
 
-### Ограничения версии 0.1.0
+### Что еще остается после 0.1.1
 
-- browser URL требует установленное расширение из `browser-extension/`;
-- качество LLM-группировки зависит от локально доступной Ollama-модели;
-- macOS пока публикуется как CI artifact, а не как подписанный production release.
+- финально добить таймлайн дня;
+- починить годовую heatmap;
+- улучшить day analysis date picker;
+- пройти остаточные UX-баги перед следующим обновлением.

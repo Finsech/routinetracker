@@ -21,6 +21,7 @@
 - Single-instance behavior is being hardened so relaunching the app restores the existing tray instance instead of spawning a duplicate window.
 - LLM regrouping is being hardened so payload collapse preserves project-bearing titles/examples instead of flattening everything to app/domain names.
 - A built-in communication dictionary is being added for Telegram / Slack / WhatsApp / Discord / MAX / Yandex Messenger and their web versions.
+- Release `0.1.1` is being prepared as the first post-launch bugfix update for Windows and the current unsigned macOS CI artifact.
 
 ## Статус
 
