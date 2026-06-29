@@ -17,6 +17,7 @@
 - The yearly heatmap must color tracked days reliably from stored local logs, with intensity based on real tracked minutes.
 - Windows packaged installer is a first-class MVP artifact; macOS build preparation is tracked separately in `MACOS_BUILD.md` because native Mac bundles require a macOS host.
 - The repository should support a first macOS CI build through GitHub Actions on `macos-latest`, with build artifacts uploaded as workflow artifacts.
+- Windows-native crates such as `windows` and `winreg` must stay behind target-specific dependencies so non-Windows builds can compile cleanly.
 
 FocusFlow - десктопное приложение для Windows 11, которое автоматически отслеживает экранное время, визуализирует активность и использует LLM для группировки действий по проектам и категориям.
 
