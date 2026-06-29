@@ -18,6 +18,7 @@
 - GitHub Actions workflow for the first macOS CI build is added in `.github/workflows/macos-build.yml`.
 - Windows-only Rust dependencies are now isolated behind `cfg(target_os = "windows")`, so macOS CI does not compile the Windows API stack.
 - The first unsigned macOS CI build is now green and uploads the artifact `focusflow-macos-bundle`.
+- Single-instance behavior is being hardened so relaunching the app restores the existing tray instance instead of spawning a duplicate window.
 
 ## Статус
 
