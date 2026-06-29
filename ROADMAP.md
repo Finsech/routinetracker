@@ -15,6 +15,7 @@
 - Day summary now supports automatic LLM regrouping every 30 minutes; manual rebuild resets the next auto cycle.
 - Year heatmap rendering was tightened to show tracked days through stronger cell coloring and explicit week/day coordinates.
 - Windows release installer is rebuilt from the current MVP state; macOS build preparation is documented in `MACOS_BUILD.md`.
+- GitHub Actions workflow for the first macOS CI build is added in `.github/workflows/macos-build.yml`.
 
 ## Статус
 
