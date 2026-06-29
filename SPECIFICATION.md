@@ -1,4 +1,4 @@
-﻿# Техническая спецификация: FocusFlow v1.0
+# Техническая спецификация: FocusFlow v1.0
 
 ## Update 2026-06-24
 
@@ -24,6 +24,7 @@
 - LLM payload should preserve meaningful window and document titles, keep several examples per context, and carry explicit communication hints so project detection in `Работа` does not collapse into generic app/domain names.
 - Known messengers and their web versions should be treated as `Общение` by default: Telegram, Slack, WhatsApp, Discord, MAX, Yandex Messenger.
 - Long workdays must not overload local Ollama with hundreds of micro-contexts: before sending a daily payload, FocusFlow should keep the largest project-bearing contexts and merge the minor tail into compact synthetic buckets so manual `Собрать день` remains usable on local 7B-class models.
+- For long workdays, daily regrouping should use a two-pass local LLM pipeline: fixed-size chunk summaries first, then a final merge pass across chunk outputs; if merge fails, FocusFlow should still fall back to flattened chunk groups instead of dropping the whole summary.
 
 FocusFlow - десктопное приложение для Windows 11, которое автоматически отслеживает экранное время, визуализирует активность и использует LLM для группировки действий по проектам и категориям.
 
@@ -302,6 +303,7 @@ CREATE TABLE llm_summary (
 LLM должна группировать активность в два уровня.
 
 Текущая реализация MVP использует локальную Ollama как первый провайдер. Запрос запускается вручную с главного экрана, чтобы не тратить ресурсы модели на каждое обновление логов. Ответ ожидается в формате JSON с группами `stream_name`, `flow_name` и индексами исходных активностей. После успешного ответа результат сохраняется в `llm_summary` по дате, сигнатуре payload, провайдеру и модели; при повторном открытии того же дня FocusFlow сначала использует сохраненную группировку.
+For long workdays, FocusFlow should not rely on one oversized prompt. It should split the prepared daily payload into fixed-size chunks, ask the local model for partial stream/flow groups per chunk, and then run a second merge pass across chunk summaries. If the merge pass fails, the app should still preserve and show the flattened chunk summaries as a fallback instead of resetting the whole result.
 
 **Уровень 1: стрим**
 

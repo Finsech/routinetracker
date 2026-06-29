@@ -85,28 +85,28 @@ export const DEFAULT_LLM_SETTINGS: LlmProviderSettings = {
 }
 
 const FLOW_ACCENTS: Record<string, string> = {
-  Работа: "#22C55E",
-  Обучение: "#38BDF8",
-  Общение: "#A855F7",
-  Развлечения: "#F97316",
-  Рутина: "#F59E0B",
+  "Работа": "#22C55E",
+  "Обучение": "#38BDF8",
+  "Общение": "#A855F7",
+  "Развлечения": "#F97316",
+  "Рутина": "#F59E0B",
 }
 
 const FLOW_NAME_MAP: Record<string, string> = {
-  Work: "Работа",
-  Learning: "Обучение",
-  Communication: "Общение",
-  Entertainment: "Развлечения",
-  Routine: "Рутина",
+  Work: "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°",
+  Learning: "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
+  Communication: "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
+  Entertainment: "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
+  Routine: "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°",
 }
 
 const GENERIC_STREAM_NAMES = new Set([
-  "работа",
-  "обучение",
-  "общение",
-  "развлечения",
-  "рутина",
-  "коммуникация",
+  "Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°",
+  "Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
+  "Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
+  "Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
+  "Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°",
+  "Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
   "communication",
   "work",
   "learning",
@@ -119,6 +119,16 @@ const GENERIC_STREAM_NAMES = new Set([
 const MAX_LLM_ITEMS = 72
 const MIN_PROJECT_ITEM_MINUTES = 8
 const MAX_PROJECTS_PER_BASE_CONTEXT = 3
+const LLM_CHUNK_SIZE = 12
+const LLM_REQUEST_TIMEOUT_MS = 240_000
+
+type LlmMergeCandidate = {
+  stream_name: string
+  flow_name: string
+  total_minutes: number
+  activities: number[]
+  examples: string[]
+}
 
 export function buildLlmSummaryPayload(
   logs: ActivityLogRecord[],
@@ -155,7 +165,7 @@ export function buildLlmSummaryPayload(
       kind: "idle" as const,
       note: log.note,
       start_time: log.start_time,
-      title: log.note || "Перерыв",
+      title: log.note || "Р В Р’В Р РЋРЎСџР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р В РІР‚В ",
       url: null,
       domain: null,
       hint_flow: "Routine" as const,
@@ -264,7 +274,7 @@ function shrinkLlmItems(items: DraftLlmActivity[]) {
     return kept
   }
 
-  return [...kept, mergeMinorContexts(tail, "Прочие короткие контексты")]
+  return [...kept, mergeMinorContexts(tail, "Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“")]
 }
 
 export function stringifyLlmPayload(payload: LlmSummaryPayload) {
@@ -273,7 +283,7 @@ export function stringifyLlmPayload(payload: LlmSummaryPayload) {
 
 export function buildLlmCacheSignature(payload: LlmSummaryPayload, settings: LlmProviderSettings) {
   return JSON.stringify({
-    version: 2,
+    version: 3,
     date: payload.date,
     provider: settings.provider,
     model: settings.model,
@@ -309,56 +319,22 @@ export async function requestOllamaSummary(
   if (payload.items.length === 0) {
     return []
   }
-
-  let data: OllamaGenerateResponse
-
-  if (isTauriRuntime()) {
-    data = await withTimeout(
-      requestOllamaGenerate({
-        baseUrl: normalizeOllamaUrl(settings.ollamaUrl),
-        model: settings.model,
-        prompt: buildLlmPrompt(payload),
-        format: LLM_RESPONSE_SCHEMA,
-      }),
-      240_000,
-      "Ollama слишком долго не отвечает",
-    )
-  } else {
-    const response = await withTimeout(
-      fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: settings.model,
-          prompt: buildLlmPrompt(payload),
-          stream: false,
-          format: LLM_RESPONSE_SCHEMA,
-          options: {
-            temperature: 0,
-          },
-        }),
-      }),
-      240_000,
-      "Ollama слишком долго не отвечает",
-    )
-
-    if (!response.ok) {
-      const details = await response.text()
-      throw new Error(details || `Ollama returned HTTP ${response.status}`)
-    }
-
-    data = (await response.json()) as OllamaGenerateResponse
+  const chunks = splitPayloadIntoChunks(payload, LLM_CHUNK_SIZE)
+  const partialGroups: LlmSummaryGroup[] = []
+  for (const chunk of chunks) {
+    const groups = await requestSummaryPass(chunk, settings, buildChunkPrompt(chunk))
+    partialGroups.push(...groups)
   }
-
-  if (data.error) {
-    throw new Error(data.error)
+  if (chunks.length === 1) {
+    return partialGroups
   }
-
-  return postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
+  try {
+    return await requestMergePass(payload, partialGroups, settings)
+  } catch (error) {
+    console.warn('LLM merge pass failed, using flattened chunk groups', error)
+    return flattenChunkGroups(payload, partialGroups)
+  }
 }
-
 export function buildFlowsFromLlmGroups(
   payload: LlmSummaryPayload,
   groups: LlmSummaryGroup[],
@@ -371,8 +347,8 @@ export function buildFlowsFromLlmGroups(
   const usedIndexes = new Set<number>()
 
   for (const group of groups) {
-    const flowName = group.flow_name.trim() || "Рутина"
-    const streamName = group.stream_name.trim() || "Без названия"
+    const flowName = group.flow_name.trim() || "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°"
+    const streamName = group.stream_name.trim() || "Р В Р’В Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В· Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ"
     const flow =
       flows.get(flowName) ??
       new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
@@ -400,9 +376,9 @@ export function buildFlowsFromLlmGroups(
   const missedItems = payload.items.filter((item) => !usedIndexes.has(item.index))
   if (missedItems.length > 0) {
     const flow =
-      flows.get("Рутина") ??
+      flows.get("Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°") ??
       new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
-    const stream = flow.get("Не распознано") ?? {
+    const stream = flow.get("Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ") ?? {
       minutes: 0,
       activities: 0,
       details: [],
@@ -414,8 +390,8 @@ export function buildFlowsFromLlmGroups(
       stream.details.push(toFlowStreamActivity(item))
     }
 
-    flow.set("Не распознано", stream)
-    flows.set("Рутина", flow)
+    flow.set("Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ", stream)
+    flows.set("Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°", flow)
   }
 
   return [...flows.entries()]
@@ -498,13 +474,53 @@ Input:
 ${JSON.stringify(compactItems, null, 2)}`
 }
 
+
+function buildChunkPrompt(payload: LlmSummaryPayload) {
+  return `${buildLlmPrompt(payload)}
+
+This input is only one chunk of the same day. Be precise inside the chunk and preserve project distinctions when titles/examples point to different workstreams.`
+}
+
+function buildMergePrompt(payload: LlmSummaryPayload, candidates: LlmMergeCandidate[]) {
+  return `You are a productivity analyst for a Russian-language time tracker.
+
+You are merging partial summaries from several chunks of the same day into one final day summary.
+
+Return only JSON that matches the provided schema. Do not use markdown. Do not explain anything.
+
+Rules:
+- Put groups into the "tasks" array.
+- "activities" must contain only numeric indexes from the candidates input.
+- Do not leave a group with an empty "activities" array.
+- Do not invent activity indexes.
+- Use exactly one flow_name value: Work, Learning, Communication, Entertainment, Routine.
+- stream_name must be a short human-readable Russian label.
+- Never use Chinese, Japanese or Korean characters in stream_name.
+- Merge candidates that clearly belong to the same project or stream across chunks.
+- Keep communication contexts inside Communication unless the input clearly proves otherwise.
+- Prefer concrete project labels from examples over generic app names.
+
+Day info:
+${JSON.stringify(
+    {
+      date: payload.date,
+      total_active_minutes: payload.total_active_minutes,
+      total_idle_minutes: payload.total_idle_minutes,
+    },
+    null,
+    2,
+  )}
+
+Chunk candidates:
+${JSON.stringify(candidates, null, 2)}`
+}
 function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
   const jsonText = extractJson(rawResponse)
   const parsed = JSON.parse(jsonText) as unknown
   const groups = Array.isArray(parsed) ? parsed : pickGroupsArray(parsed)
 
   if (!groups) {
-    throw new Error("LLM вернула не JSON-массив")
+    throw new Error("LLM Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В° Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ JSON-Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В ")
   }
 
   return groups
@@ -521,7 +537,7 @@ function postProcessLlmGroups(payload: LlmSummaryPayload, groups: LlmSummaryGrou
     const forcedCommunication =
       items.length > 0 && items.every((item) => item.hint_flow === "Communication")
 
-    const flow_name = forcedCommunication ? "Общение" : group.flow_name
+    const flow_name = forcedCommunication ? "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ" : group.flow_name
     const stream_name = sanitizeStreamName(group.stream_name, flow_name, items)
 
     return {
@@ -573,7 +589,7 @@ function pickMeaningfulLabel(value: string | null | undefined) {
   }
 
   const parts = value
-    .split(/\s+[—–|-]\s+|\s+\|\s+|\s+·\s+/)
+    .split(/\s+[Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљР В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎС™|-]\s+|\s+\|\s+|\s+Р В РІР‚в„ўР вЂ™Р’В·\s+/)
     .map((part) => part.trim())
     .filter(Boolean)
 
@@ -588,16 +604,16 @@ function pickMeaningfulLabel(value: string | null | undefined) {
 
 function fallbackStreamNameByFlow(flowName: string) {
   switch (flowName) {
-    case "Работа":
-      return "Рабочий контекст"
-    case "Обучение":
-      return "Учебный контекст"
-    case "Общение":
-      return "Коммуникация в чатах"
-    case "Развлечения":
-      return "Развлекательный контекст"
+    case "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°":
+      return "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
+    case "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ":
+      return "Р В Р’В Р В РІвЂљВ¬Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В±Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
+    case "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ":
+      return "Р В Р’В Р РЋРІвЂћСћР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В  Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В¦"
+    case "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ":
+      return "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
     default:
-      return "Рутинные задачи"
+      return "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚В"
   }
 }
 
@@ -654,9 +670,141 @@ function extractJson(value: string) {
     return trimmed.slice(objectStart, objectEnd + 1)
   }
 
-  throw new Error("LLM не вернула JSON с группировкой")
+  throw new Error("LLM Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В° JSON Р В Р Р‹Р В РЎвЂњ Р В Р’В Р РЋРІР‚вЂњР В Р Р‹Р В РІР‚С™Р В Р Р‹Р РЋРІР‚СљР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚ВР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ")
 }
 
+function splitPayloadIntoChunks(payload: LlmSummaryPayload, chunkSize: number) {
+  const chunks: LlmSummaryPayload[] = []
+
+  for (let index = 0; index < payload.items.length; index += chunkSize) {
+    chunks.push({
+      ...payload,
+      items: payload.items.slice(index, index + chunkSize),
+    })
+  }
+
+  return chunks
+}
+
+async function requestSummaryPass(
+  payload: LlmSummaryPayload,
+  settings: LlmProviderSettings,
+  prompt: string,
+) {
+  const data = await requestOllamaJson(settings, prompt)
+  return postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
+}
+
+async function requestMergePass(
+  payload: LlmSummaryPayload,
+  chunkGroups: LlmSummaryGroup[],
+  settings: LlmProviderSettings,
+) {
+  const candidates = buildMergeCandidates(payload, chunkGroups)
+  const data = await requestOllamaJson(settings, buildMergePrompt(payload, candidates))
+  const merged = postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
+
+  return merged.length > 0 ? merged : flattenChunkGroups(payload, chunkGroups)
+}
+
+async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) {
+  let data: OllamaGenerateResponse
+
+  if (isTauriRuntime()) {
+    data = await withTimeout(
+      requestOllamaGenerate({
+        baseUrl: normalizeOllamaUrl(settings.ollamaUrl),
+        model: settings.model,
+        prompt,
+        format: LLM_RESPONSE_SCHEMA,
+      }),
+      LLM_REQUEST_TIMEOUT_MS,
+      "Ollama СЃР»РёС€РєРѕРј РґРѕР»РіРѕ РЅРµ РѕС‚РІРµС‡Р°РµС‚",
+    )
+  } else {
+    const response = await withTimeout(
+      fetch(`${normalizeOllamaUrl(settings.ollamaUrl)}/api/generate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: settings.model,
+          prompt,
+          stream: false,
+          format: LLM_RESPONSE_SCHEMA,
+          options: {
+            temperature: 0,
+          },
+        }),
+      }),
+      LLM_REQUEST_TIMEOUT_MS,
+      "Ollama СЃР»РёС€РєРѕРј РґРѕР»РіРѕ РЅРµ РѕС‚РІРµС‡Р°РµС‚",
+    )
+
+    if (!response.ok) {
+      const details = await response.text()
+      throw new Error(details || `Ollama returned HTTP ${response.status}`)
+    }
+
+    data = (await response.json()) as OllamaGenerateResponse
+  }
+
+  if (data.error) {
+    throw new Error(data.error)
+  }
+
+  return data
+}
+
+function buildMergeCandidates(payload: LlmSummaryPayload, groups: LlmSummaryGroup[]): LlmMergeCandidate[] {
+  const itemsByIndex = new Map(payload.items.map((item) => [item.index, item]))
+
+  return groups.map((group) => {
+    const items = group.activities
+      .map((index) => itemsByIndex.get(index) ?? null)
+      .filter((item): item is LlmSummaryItem => item !== null)
+
+    return {
+      stream_name: group.stream_name,
+      flow_name: normalizeFlowNameForPrompt(group.flow_name),
+      total_minutes: roundMinutes(items.reduce((sum, item) => sum + item.duration_minutes, 0)),
+      activities: [...new Set(group.activities)].sort((left, right) => left - right),
+      examples: mergeExamples(
+        [],
+        items.flatMap((item) => item.examples ?? [item.title ?? item.app]).filter(Boolean),
+      ),
+    }
+  })
+}
+
+function flattenChunkGroups(payload: LlmSummaryPayload, groups: LlmSummaryGroup[]) {
+  const merged = new Map<string, LlmSummaryGroup>()
+
+  for (const group of groups) {
+    const key = `${group.flow_name}::${group.stream_name}`
+    const existing = merged.get(key)
+
+    if (existing) {
+      existing.activities = [...new Set([...existing.activities, ...group.activities])].sort(
+        (left, right) => left - right,
+      )
+      continue
+    }
+
+    merged.set(key, {
+      ...group,
+      activities: [...new Set(group.activities)].sort((left, right) => left - right),
+    })
+  }
+
+  return postProcessLlmGroups(payload, [...merged.values()])
+}
+
+function normalizeFlowNameForPrompt(flowName: string) {
+  const entry = Object.entries(FLOW_NAME_MAP).find(([, localized]) => localized === flowName)
+  return entry?.[0] ?? flowName
+}
 function normalizeOllamaUrl(value: string) {
   const trimmed = value.trim() || DEFAULT_LLM_SETTINGS.ollamaUrl
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`
@@ -693,19 +841,19 @@ function formatMinutes(totalMinutes: number) {
   const minutes = rounded % 60
 
   if (hours === 0) {
-    return `${minutes} мин`
+    return `${minutes} Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦`
   }
 
   if (minutes === 0) {
-    return `${hours} ч`
+    return `${hours} Р В Р Р‹Р Р†Р вЂљР Р‹`
   }
 
-  return `${hours} ч ${minutes} мин`
+  return `${hours} Р В Р Р‹Р Р†Р вЂљР Р‹ ${minutes} Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦`
 }
 
 function parseDurationText(value: string) {
-  const hoursMatch = value.match(/(\d+)\s*ч/u)
-  const minutesMatch = value.match(/(\d+)\s*мин/u)
+  const hoursMatch = value.match(/(\d+)\s*Р В Р Р‹Р Р†Р вЂљР Р‹/u)
+  const minutesMatch = value.match(/(\d+)\s*Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦/u)
   return Number(hoursMatch?.[1] ?? 0) * 60 + Number(minutesMatch?.[1] ?? 0)
 }
 
@@ -792,12 +940,12 @@ function mergeMinorContexts(items: DraftLlmActivity[], explicitTitle?: string): 
 
 function buildMergedTitle(item: DraftLlmActivity) {
   if (item.hint_flow === "Communication") {
-    return `Коммуникация в ${item.app.replace(/\.exe$/i, "")}`
+    return `Р В Р’В Р РЋРІвЂћСћР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В  ${item.app.replace(/\.exe$/i, "")}`
   }
 
   return item.domain
-    ? `Прочие окна ${item.domain}`
-    : `Прочие окна ${item.app.replace(/\.exe$/i, "")}`
+    ? `Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В° ${item.domain}`
+    : `Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В° ${item.app.replace(/\.exe$/i, "")}`
 }
 
 function slugify(value: string) {

@@ -1,4 +1,4 @@
-﻿# Roadmap FocusFlow
+# Roadmap FocusFlow
 
 ## Update 2026-06-24
 
@@ -24,6 +24,7 @@
 - Release `0.1.1` is being prepared as the first post-launch bugfix update for Windows and the current unsigned macOS CI artifact.
 - Post-release bugfix pass is now tightening three user-facing areas together: real-time geometry of the day timeline, reliable yearly heatmap visibility, and a datepicker-based day selector inside `Анализ дня`.
 - Manual day regrouping is being hardened for long tracked days: the LLM payload is now trimmed so local Ollama models do not stall on 7+ hour sessions with hundreds of window switches.
+- Manual regrouping for long days is now moving from one oversized prompt to a two-stage chunk-and-merge pipeline so local 7B-class Ollama models stay usable beyond 7 tracked hours.
 
 ## Статус
 
