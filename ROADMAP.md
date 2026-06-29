@@ -17,6 +17,7 @@
 - Windows release installer is rebuilt from the current MVP state; macOS build preparation is documented in `MACOS_BUILD.md`.
 - GitHub Actions workflow for the first macOS CI build is added in `.github/workflows/macos-build.yml`.
 - Windows-only Rust dependencies are now isolated behind `cfg(target_os = "windows")`, so macOS CI does not compile the Windows API stack.
+- The first unsigned macOS CI build is now green and uploads the artifact `focusflow-macos-bundle`.
 
 ## Статус
 
