@@ -11,6 +11,7 @@ const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
 
 export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
   const weeks = Math.max(...cells.map((cell) => cell.weekIndex), 0) + 1
+  const maxMinutes = Math.max(...cells.map((cell) => cell.totalMinutes), 0)
   const cellsByCoordinate = new Map(
     cells.map((cell) => [`${cell.weekIndex}:${cell.weekday}`, cell] as const),
   )
@@ -57,13 +58,14 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
 
                   return (
                     <div
-                      className="size-3 rounded-[3px]"
+                      className="size-3 rounded-[3px] border border-white/80"
                       key={`${label}-${weekIndex}`}
                       style={{
-                        backgroundColor:
+                        backgroundColor: colorForCell(cell?.totalMinutes ?? 0, maxMinutes),
+                        boxShadow:
                           cell && cell.totalMinutes > 0
-                            ? colorForLevel(Math.max(cell.level, 1))
-                            : colorForLevel(0),
+                            ? "inset 0 0 0 1px rgba(36,56,47,0.08)"
+                            : "none",
                       }}
                       title={
                         cell
@@ -96,15 +98,29 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
   )
 }
 
+function colorForCell(totalMinutes: number, maxMinutes: number) {
+  if (totalMinutes <= 0 || maxMinutes <= 0) {
+    return colorForLevel(0)
+  }
+
+  const ratio = totalMinutes / maxMinutes
+
+  if (ratio >= 0.85) return colorForLevel(5)
+  if (ratio >= 0.65) return colorForLevel(4)
+  if (ratio >= 0.4) return colorForLevel(3)
+  if (ratio >= 0.18) return colorForLevel(2)
+  return colorForLevel(1)
+}
+
 function colorForLevel(level: number) {
   return (
     [
       "#EEF2EE",
-      "#B8C7BC",
-      "#82BA91",
-      "#59B66F",
-      "#2FC35A",
-      "#14D84B",
+      "#D7E8DB",
+      "#A6D5B1",
+      "#72C789",
+      "#3FB95E",
+      "#1FAA44",
     ][level] ?? "#EEF2EE"
   )
 }

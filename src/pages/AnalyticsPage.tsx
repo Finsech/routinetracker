@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
-import { ArrowRightLeft, Clock3, Focus, Sparkles } from "lucide-react"
+import { ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, Focus, Sparkles } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
@@ -31,6 +31,8 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
   const [llmSummaries, setLlmSummaries] = useState<LlmSummaryRecord[]>([])
   const [settings, setSettings] = useState<SettingEntryRecord[]>([])
   const [selectedDateKey, setSelectedDateKey] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerMonth, setPickerMonth] = useState(() => startOfMonth(selectedDate))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -77,6 +79,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
     () => buildAvailableDateKeys(logs, idleLogs),
     [idleLogs, logs],
   )
+  const availableDateSet = useMemo(() => new Set(availableDateKeys), [availableDateKeys])
   const effectiveDateKey = selectedDateKey ?? availableDateKeys[0] ?? formatDateKey(selectedDate)
   const selectedDay = useMemo(() => parseDateKey(effectiveDateKey), [effectiveDateKey])
   const summary = useMemo(
@@ -87,6 +90,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
 
   useEffect(() => {
     setSelectedDateKey(formatDateKey(selectedDate))
+    setPickerMonth(startOfMonth(selectedDate))
   }, [selectedDate])
   const llmPayload = useMemo(
     () => buildLlmSummaryPayload(logs, idleLogs, selectedDay),
@@ -130,24 +134,81 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            {availableDateKeys.slice(0, 7).map((dateKey) => {
-              const active = dateKey === effectiveDateKey
-              return (
-                <button
-                  className={`rounded-full border px-4 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF8] ${
-                    active
-                      ? "border-[#B7D9C0] bg-[#ECF7EF] text-[#284135] shadow-[0_8px_18px_rgba(110,130,118,0.08)]"
-                      : "border-[#E3ECE5] bg-white/75 text-[#6D8176] hover:border-[#CFE0D2] hover:text-[#284135]"
-                  }`}
-                  key={dateKey}
-                  onClick={() => setSelectedDateKey(dateKey)}
-                  type="button"
-                >
-                  {formatDatePill(dateKey)}
-                </button>
-              )
-            })}
+          <div className="relative">
+            <button
+              className="inline-flex items-center gap-2 rounded-full border border-[#DDE8DF] bg-white px-4 py-2 text-sm text-[#30463A] transition hover:border-[#C9DDD0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF8]"
+              onClick={() => setPickerOpen((current) => !current)}
+              type="button"
+            >
+              <CalendarDays className="size-4" />
+              {formatDatePill(effectiveDateKey)}
+            </button>
+
+            {pickerOpen && (
+              <div className="absolute right-0 top-[calc(100%+12px)] z-30 w-[320px] rounded-[24px] border border-[#DDE8DF] bg-white p-4 shadow-[0_22px_60px_rgba(91,121,108,0.16)]">
+                <div className="flex items-center justify-between gap-3">
+                  <button
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-[#E3ECE5] bg-[#FBFDFB] text-[#4A6155] transition hover:border-[#CADDD0]"
+                    onClick={() => setPickerMonth((current) => addMonths(current, -1))}
+                    type="button"
+                  >
+                    <ChevronLeft className="size-4" />
+                  </button>
+                  <div className="text-sm font-medium text-[#2A4135]">
+                    {pickerMonth.toLocaleDateString("ru-RU", { month: "long", year: "numeric" })}
+                  </div>
+                  <button
+                    className="inline-flex size-9 items-center justify-center rounded-full border border-[#E3ECE5] bg-[#FBFDFB] text-[#4A6155] transition hover:border-[#CADDD0]"
+                    onClick={() => setPickerMonth((current) => addMonths(current, 1))}
+                    type="button"
+                  >
+                    <ChevronRight className="size-4" />
+                  </button>
+                </div>
+
+                <div className="mt-4 grid grid-cols-7 gap-2 text-center text-[11px] text-[#7A8C83]">
+                  {["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].map((label) => (
+                    <div key={label}>{label}</div>
+                  ))}
+                </div>
+
+                <div className="mt-2 grid grid-cols-7 gap-2">
+                  {buildCalendarCells(pickerMonth).map((cell, index) => {
+                    if (!cell) {
+                      return <div className="h-10" key={`empty-${index}`} />
+                    }
+
+                    const dateKey = formatDateKey(cell)
+                    const tracked = availableDateSet.has(dateKey)
+                    const active = dateKey === effectiveDateKey
+
+                    return (
+                      <button
+                        className={`relative h-10 rounded-[14px] border text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] ${
+                          active
+                            ? "border-[#B7D9C0] bg-[#ECF7EF] text-[#284135]"
+                            : tracked
+                              ? "border-[#DCE8DF] bg-[#FBFDFB] text-[#32483C] hover:border-[#C9DDD0]"
+                              : "border-transparent bg-transparent text-[#A5B3AC]"
+                        }`}
+                        disabled={!tracked}
+                        key={dateKey}
+                        onClick={() => {
+                          setSelectedDateKey(dateKey)
+                          setPickerOpen(false)
+                        }}
+                        type="button"
+                      >
+                        {cell.getDate()}
+                        {tracked && (
+                          <span className="absolute bottom-1 left-1/2 size-1.5 -translate-x-1/2 rounded-full bg-[#59B66F]" />
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -452,6 +513,31 @@ function formatAnalyticsHeading(dateKey: string) {
     day: "numeric",
     month: "long",
   })
+}
+
+function buildCalendarCells(month: Date) {
+  const monthStart = startOfMonth(month)
+  const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0)
+  const startOffset = (monthStart.getDay() + 6) % 7
+  const cells: Array<Date | null> = Array.from({ length: startOffset }, () => null)
+
+  for (let day = 1; day <= monthEnd.getDate(); day += 1) {
+    cells.push(new Date(monthStart.getFullYear(), monthStart.getMonth(), day))
+  }
+
+  while (cells.length % 7 !== 0) {
+    cells.push(null)
+  }
+
+  return cells
+}
+
+function startOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function addMonths(date: Date, delta: number) {
+  return new Date(date.getFullYear(), date.getMonth() + delta, 1)
 }
 
 function MetricCard({

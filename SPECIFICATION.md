@@ -15,6 +15,8 @@
 - Day timeline should derive its visible hour range from real activity data, not from a fixed 09:00-22:00 scaffold.
 - The Today screen should refresh LLM grouping automatically every 30 minutes for the current day; manual rebuild resets the next automatic cycle.
 - The yearly heatmap must color tracked days reliably from stored local logs, with intensity based on real tracked minutes.
+- The `Сегодня` timeline keeps its hour-bucket visualization, but segment geometry inside each hour must stay tied to real clock positions rather than cumulative pseudo-offsets.
+- The `Анализ дня` screen should switch from a growing row of recent-date pills to a datepicker that highlights days with recorded activity.
 - Windows packaged installer is a first-class MVP artifact; macOS build preparation is tracked separately in `MACOS_BUILD.md` because native Mac bundles require a macOS host.
 - The repository should support a first macOS CI build through GitHub Actions on `macos-latest`, with build artifacts uploaded as workflow artifacts.
 - Windows-native crates such as `windows` and `winreg` must stay behind target-specific dependencies so non-Windows builds can compile cleanly.

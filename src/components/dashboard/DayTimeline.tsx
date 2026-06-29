@@ -25,6 +25,7 @@ export type DayTimelineSegment = {
   url?: string | null
   details: TimelineItem[]
   startOffsetMinutes: number
+  endOffsetMinutes: number
 }
 
 export type HourTimelineRow = {
@@ -274,7 +275,7 @@ function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTim
     const hour = range.startHour + index
     const bucketStart = hour * 60
     const bucketEnd = (hour + 1) * 60
-    const segmentsMap = new Map<string, Omit<DayTimelineSegment, "startOffsetMinutes">>()
+    const segments: DayTimelineSegment[] = []
 
     for (const item of items) {
       const overlapStart = Math.max(item.startMinutes, bucketStart)
@@ -286,19 +287,19 @@ function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTim
       }
 
       const context = resolveContext(item)
-      const id = `${hour}-${context.key}`
-      const segment = segmentsMap.get(id)
+      const previous = segments.length > 0 ? segments[segments.length - 1] : null
 
-      if (segment) {
-        segment.durationMinutes += overlapMinutes
-        segment.episodes += 1
-        segment.details.push(item)
-        segment.end = laterClock(segment.end, item.end)
+      if (previous && previous.app === item.app && previous.url === item.url) {
+        previous.durationMinutes += overlapMinutes
+        previous.episodes += 1
+        previous.details.push(item)
+        previous.end = laterClock(previous.end, item.end)
+        previous.endOffsetMinutes = overlapEnd - bucketStart
         continue
       }
 
-      segmentsMap.set(id, {
-        id,
+      segments.push({
+        id: `${hour}-${context.key}-${overlapStart}`,
         hour,
         label: context.label,
         accent: item.accent,
@@ -310,24 +311,16 @@ function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTim
         flow: item.flow,
         url: item.url,
         details: [item],
+        startOffsetMinutes: overlapStart - bucketStart,
+        endOffsetMinutes: overlapEnd - bucketStart,
       })
     }
-
-    let offset = 0
-    const segments = [...segmentsMap.values()].map((segment) => {
-      const nextSegment: DayTimelineSegment = {
-        ...segment,
-        startOffsetMinutes: offset,
-      }
-      offset += segment.durationMinutes
-      return nextSegment
-    })
 
     return {
       hour,
       label: formatHour(hour),
       segments,
-      coveredMinutes: offset,
+      coveredMinutes: segments.reduce((sum, segment) => sum + segment.durationMinutes, 0),
     }
   })
 }
