@@ -19,6 +19,8 @@
 - Windows-only Rust dependencies are now isolated behind `cfg(target_os = "windows")`, so macOS CI does not compile the Windows API stack.
 - The first unsigned macOS CI build is now green and uploads the artifact `focusflow-macos-bundle`.
 - Single-instance behavior is being hardened so relaunching the app restores the existing tray instance instead of spawning a duplicate window.
+- LLM regrouping is being hardened so payload collapse preserves project-bearing titles/examples instead of flattening everything to app/domain names.
+- A built-in communication dictionary is being added for Telegram / Slack / WhatsApp / Discord / MAX / Yandex Messenger and their web versions.
 
 ## Статус
 

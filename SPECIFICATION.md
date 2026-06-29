@@ -19,6 +19,8 @@
 - The repository should support a first macOS CI build through GitHub Actions on `macos-latest`, with build artifacts uploaded as workflow artifacts.
 - Windows-native crates such as `windows` and `winreg` must stay behind target-specific dependencies so non-Windows builds can compile cleanly.
 - FocusFlow should behave as a single desktop instance: relaunching it must activate the existing hidden/tray instance instead of opening a duplicate copy.
+- LLM payload should preserve meaningful window and document titles, keep several examples per context, and carry explicit communication hints so project detection in `Работа` does not collapse into generic app/domain names.
+- Known messengers and their web versions should be treated as `Общение` by default: Telegram, Slack, WhatsApp, Discord, MAX, Yandex Messenger.
 
 FocusFlow - десктопное приложение для Windows 11, которое автоматически отслеживает экранное время, визуализирует активность и использует LLM для группировки действий по проектам и категориям.
 

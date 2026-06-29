@@ -1,6 +1,7 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import { requestOllamaGenerate } from "@/lib/tauri-api"
 import type { FlowStreamActivity, FlowSummary } from "@/types"
+import { buildContextHints, type FlowHint } from "@/lib/context-taxonomy"
 
 type TimeRangeRecord = {
   start_time: string
@@ -13,11 +14,14 @@ export type LlmSummaryItem = {
   app: string
   title: string | null
   url: string | null
+  domain: string | null
   note: string | null
   start_time: string
   end_time: string
   duration_minutes: number
   episodes?: number
+  examples?: string[]
+  hint_flow?: FlowHint | null
 }
 
 export type LlmSummaryPayload = {
@@ -41,6 +45,8 @@ export type LlmSummaryGroup = {
   flow_name: string
   activities: number[]
 }
+
+type DraftLlmActivity = Omit<LlmSummaryItem, "index">
 
 type OllamaGenerateResponse = {
   response?: string
@@ -94,6 +100,22 @@ const FLOW_NAME_MAP: Record<string, string> = {
   Routine: "Рутина",
 }
 
+const GENERIC_STREAM_NAMES = new Set([
+  "работа",
+  "обучение",
+  "общение",
+  "развлечения",
+  "рутина",
+  "коммуникация",
+  "communication",
+  "work",
+  "learning",
+  "routine",
+  "entertainment",
+  "stream",
+  "task",
+])
+
 export function buildLlmSummaryPayload(
   logs: ActivityLogRecord[],
   idleLogs: IdleLogRecord[],
@@ -102,17 +124,25 @@ export function buildLlmSummaryPayload(
   const activeItems = collapseActivityLogsForLlm(
     logs
       .filter((log) => isSameDay(new Date(log.start_time), date))
-      .map((log) => ({
-        app: log.app_name,
-        end_time: log.end_time,
-        kind: "activity" as const,
-        note: null,
-        start_time: log.start_time,
-        title: log.window_title,
-        url: log.url,
-        duration_minutes: roundMinutes(durationMinutes(log)),
-      })),
+      .map((log) => {
+        const hints = buildContextHints(log.app_name, log.url, log.window_title)
+
+        return {
+          app: log.app_name,
+          end_time: log.end_time,
+          kind: "activity" as const,
+          note: null,
+          start_time: log.start_time,
+          title: log.window_title,
+          url: log.url,
+          domain: hints.domain,
+          hint_flow: hints.hintFlow,
+          duration_minutes: roundMinutes(durationMinutes(log)),
+          examples: collectExamples(log.window_title, log.url),
+        }
+      }),
   )
+
   const idleItems = idleLogs
     .filter((log) => !log.ignored && isSameDay(new Date(log.start_time), date))
     .map((log) => ({
@@ -123,9 +153,13 @@ export function buildLlmSummaryPayload(
       start_time: log.start_time,
       title: log.note || "Перерыв",
       url: null,
+      domain: null,
+      hint_flow: "Routine" as const,
       duration_minutes: roundMinutes(durationMinutes(log)),
       episodes: 1,
+      examples: log.note ? [log.note] : [],
     }))
+
   const items = [...activeItems, ...idleItems]
     .sort((left, right) => timeValue(left.start_time) - timeValue(right.start_time))
     .map((item, index) => ({ ...item, index }))
@@ -138,20 +172,16 @@ export function buildLlmSummaryPayload(
     total_active_minutes: roundMinutes(
       activeItems.reduce((sum, item) => sum + item.duration_minutes, 0),
     ),
-    total_idle_minutes: roundMinutes(
-      idleItems.reduce((sum, item) => sum + item.duration_minutes, 0),
-    ),
+    total_idle_minutes: roundMinutes(idleItems.reduce((sum, item) => sum + item.duration_minutes, 0)),
     items,
   }
 }
-
-type DraftLlmActivity = Omit<LlmSummaryItem, "index">
 
 function collapseActivityLogsForLlm(logs: DraftLlmActivity[]) {
   const grouped = new Map<string, DraftLlmActivity>()
 
   for (const item of logs) {
-    const contextKey = item.url ? `site:${safeHostname(item.url)}` : `app:${item.app.toLowerCase()}`
+    const contextKey = buildCollapseKey(item)
     const existing = grouped.get(contextKey)
 
     if (existing) {
@@ -159,17 +189,20 @@ function collapseActivityLogsForLlm(logs: DraftLlmActivity[]) {
       existing.end_time = laterTime(existing.end_time, item.end_time)
       existing.start_time = earlierTime(existing.start_time, item.start_time)
       existing.episodes = (existing.episodes ?? 1) + 1
-      if (!existing.title && item.title) {
-        existing.title = item.title
+      existing.examples = mergeExamples(existing.examples, item.examples)
+      existing.title = selectRepresentativeTitle(existing, item)
+      if (!existing.hint_flow && item.hint_flow) {
+        existing.hint_flow = item.hint_flow
       }
       continue
     }
 
     grouped.set(contextKey, {
       ...item,
-      title: item.url ? safeHostname(item.url) : item.app,
-      url: item.url ? `https://${safeHostname(item.url)}` : item.url,
+      title: item.title || item.domain || item.app,
+      url: item.domain ? `https://${item.domain}` : item.url,
       episodes: 1,
+      examples: mergeExamples([], item.examples),
     })
   }
 
@@ -180,12 +213,9 @@ export function stringifyLlmPayload(payload: LlmSummaryPayload) {
   return JSON.stringify(payload, null, 2)
 }
 
-export function buildLlmCacheSignature(
-  payload: LlmSummaryPayload,
-  settings: LlmProviderSettings,
-) {
+export function buildLlmCacheSignature(payload: LlmSummaryPayload, settings: LlmProviderSettings) {
   return JSON.stringify({
-    version: 1,
+    version: 2,
     date: payload.date,
     provider: settings.provider,
     model: settings.model,
@@ -195,10 +225,13 @@ export function buildLlmCacheSignature(
       app: item.app,
       title: item.title,
       url: item.url,
+      domain: item.domain,
       note: item.note,
+      hint_flow: item.hint_flow,
       start_time: item.start_time,
       end_time: item.end_time,
       duration_minutes: item.duration_minutes,
+      examples: item.examples,
     })),
   })
 }
@@ -265,7 +298,7 @@ export async function requestOllamaSummary(
     throw new Error(data.error)
   }
 
-  return parseLlmGroups(data.response ?? "")
+  return postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
 }
 
 export function buildFlowsFromLlmGroups(
@@ -349,9 +382,7 @@ export function buildFlowsFromLlmGroups(
     .sort((left, right) => parseDurationText(right.time) - parseDurationText(left.time))
 }
 
-export function readLlmSettings(
-  settings: { key: string; value: string }[],
-): LlmProviderSettings {
+export function readLlmSettings(settings: { key: string; value: string }[]): LlmProviderSettings {
   const ollamaUrl = settingValue(settings, "ollama_url", DEFAULT_LLM_SETTINGS.ollamaUrl)
   const model = settingValue(settings, "llm_model", DEFAULT_LLM_SETTINGS.model)
 
@@ -372,24 +403,6 @@ function toFlowStreamActivity(item: LlmSummaryItem): FlowStreamActivity {
   }
 }
 
-function durationMinutes(log: TimeRangeRecord) {
-  const start = timeValue(log.start_time)
-  const end = timeValue(log.end_time)
-
-  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
-    return 0
-  }
-
-  return (end - start) / 60_000
-}
-
-function formatClock(value: string) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(new Date(value))
-}
-
 function buildLlmPrompt(payload: LlmSummaryPayload) {
   const compactItems = payload.items.map((item) => ({
     index: item.index,
@@ -397,15 +410,17 @@ function buildLlmPrompt(payload: LlmSummaryPayload) {
     app: item.app,
     title: item.title,
     url: item.url,
+    domain: item.domain,
     note: item.note,
-    start_time: item.start_time,
-    end_time: item.end_time,
     duration_minutes: item.duration_minutes,
+    episodes: item.episodes ?? 1,
+    hint_flow: item.hint_flow ?? null,
+    examples: item.examples ?? [],
   }))
 
-  return `You are a productivity assistant. Group the user's activity log into concrete tasks or projects.
+  return `You are a productivity analyst for a Russian-language time tracker.
 
-Return only JSON that matches the provided schema. Do not use markdown. Do not explain.
+Return only JSON that matches the provided schema. Do not use markdown. Do not explain anything.
 
 Rules:
 - Put groups into the "tasks" array.
@@ -413,10 +428,13 @@ Rules:
 - Do not leave a group with an empty "activities" array.
 - Do not invent activity indexes.
 - Use exactly one flow_name value: Work, Learning, Communication, Entertainment, Routine.
-- Use concise stream_name values. Russian stream names are allowed when the input is Russian.
-- Treat idle items with a note as normal user activity.
-- Put idle items without a note into Routine.
-- Input items may already summarize multiple short episodes of the same context.
+- stream_name must be a short human-readable Russian label.
+- Never use Chinese, Japanese or Korean characters in stream_name.
+- If hint_flow is Communication, treat that activity as communication unless the input clearly proves otherwise.
+- Telegram, Slack, Discord, WhatsApp, MAX and Yandex Messenger contexts belong to Communication, including their web versions.
+- Use the examples array to infer concrete projects from document titles, Figma files, tasks, repositories, specs and browser tab names.
+- If the same project appears in several contexts, merge those activities into one stream.
+- Idle items with a note are valid user activity. Idle items without a note belong to Routine.
 
 Input:
 ${JSON.stringify(compactItems, null, 2)}`
@@ -434,6 +452,99 @@ function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
   return groups
     .map((item) => normalizeGroup(item))
     .filter((item): item is LlmSummaryGroup => item !== null)
+}
+
+function postProcessLlmGroups(payload: LlmSummaryPayload, groups: LlmSummaryGroup[]) {
+  return groups.map((group) => {
+    const items = group.activities
+      .map((index) => payload.items.find((item) => item.index === index) ?? null)
+      .filter((item): item is LlmSummaryItem => item !== null)
+
+    const forcedCommunication =
+      items.length > 0 && items.every((item) => item.hint_flow === "Communication")
+
+    const flow_name = forcedCommunication ? "Общение" : group.flow_name
+    const stream_name = sanitizeStreamName(group.stream_name, flow_name, items)
+
+    return {
+      ...group,
+      flow_name,
+      stream_name,
+    }
+  })
+}
+
+function sanitizeStreamName(streamName: string, flowName: string, items: LlmSummaryItem[]) {
+  const trimmed = streamName.trim()
+  const looksBroken =
+    !trimmed || containsCjk(trimmed) || GENERIC_STREAM_NAMES.has(trimmed.toLowerCase())
+
+  if (!looksBroken) {
+    return trimmed
+  }
+
+  const derived =
+    deriveStreamNameFromItems(items) ||
+    fallbackStreamNameByFlow(flowName)
+
+  return derived
+}
+
+function deriveStreamNameFromItems(items: LlmSummaryItem[]) {
+  const candidates = new Map<string, number>()
+
+  for (const item of items) {
+    const values = [item.title, ...(item.examples ?? [])]
+
+    for (const value of values) {
+      const candidate = pickMeaningfulLabel(value)
+      if (!candidate) {
+        continue
+      }
+
+      candidates.set(candidate, (candidates.get(candidate) ?? 0) + item.duration_minutes)
+    }
+  }
+
+  return [...candidates.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? null
+}
+
+function pickMeaningfulLabel(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const parts = value
+    .split(/\s+[—–|-]\s+|\s+\|\s+|\s+·\s+/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  const candidate = parts.sort((left, right) => right.length - left.length)[0] ?? value.trim()
+
+  if (candidate.length < 4 || containsCjk(candidate)) {
+    return null
+  }
+
+  return candidate.slice(0, 80)
+}
+
+function fallbackStreamNameByFlow(flowName: string) {
+  switch (flowName) {
+    case "Работа":
+      return "Рабочий контекст"
+    case "Обучение":
+      return "Учебный контекст"
+    case "Общение":
+      return "Коммуникация в чатах"
+    case "Развлечения":
+      return "Развлекательный контекст"
+    default:
+      return "Рутинные задачи"
+  }
+}
+
+function containsCjk(value: string) {
+  return /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af]/u.test(value)
 }
 
 function pickGroupsArray(value: unknown) {
@@ -535,8 +646,8 @@ function formatMinutes(totalMinutes: number) {
 }
 
 function parseDurationText(value: string) {
-  const hoursMatch = value.match(/(\d+)\s*ч/)
-  const minutesMatch = value.match(/(\d+)\s*мин/)
+  const hoursMatch = value.match(/(\d+)\s*ч/u)
+  const minutesMatch = value.match(/(\d+)\s*мин/u)
   return Number(hoursMatch?.[1] ?? 0) * 60 + Number(minutesMatch?.[1] ?? 0)
 }
 
@@ -563,13 +674,81 @@ function timeValue(value: string) {
   return new Date(value).getTime()
 }
 
+function formatClock(value: string) {
+  return new Intl.DateTimeFormat("ru-RU", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value))
+}
 
-function safeHostname(value: string) {
-  try {
-    return new URL(value).hostname.replace(/^www\./i, "")
-  } catch {
-    return value
+function durationMinutes(log: TimeRangeRecord) {
+  const start = timeValue(log.start_time)
+  const end = timeValue(log.end_time)
+
+  if (Number.isNaN(start) || Number.isNaN(end) || end <= start) {
+    return 0
   }
+
+  return (end - start) / 60_000
+}
+
+function buildCollapseKey(item: DraftLlmActivity) {
+  const hints = buildContextHints(item.app, item.url, item.title)
+  const base = hints.domain ? `site:${hints.domain}` : `app:${hints.normalizedApp}`
+
+  if (item.hint_flow === "Communication") {
+    return base
+  }
+
+  if (hints.projectHint) {
+    return `${base}|project:${slugify(hints.projectHint)}`
+  }
+
+  return base
+}
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80)
+}
+
+function collectExamples(title: string | null, url: string | null) {
+  const examples = [title, url].filter(Boolean) as string[]
+  return examples.slice(0, 5)
+}
+
+function mergeExamples(
+  left: string[] | undefined,
+  right: string[] | undefined,
+) {
+  return [...new Set([...(left ?? []), ...(right ?? [])])].slice(0, 5)
+}
+
+function selectRepresentativeTitle(existing: DraftLlmActivity, next: DraftLlmActivity) {
+  const currentScore = titleScore(existing.title, existing.app)
+  const nextScore = titleScore(next.title, next.app)
+  return nextScore > currentScore ? next.title : existing.title
+}
+
+function titleScore(title: string | null, app: string) {
+  if (!title) {
+    return 0
+  }
+
+  const normalized = title.trim().toLowerCase()
+
+  if (!normalized || normalized === app.trim().toLowerCase()) {
+    return 1
+  }
+
+  if (containsCjk(normalized)) {
+    return 2
+  }
+
+  return normalized.length
 }
 
 function earlierTime(left: string, right: string) {
