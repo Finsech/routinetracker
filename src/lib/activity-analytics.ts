@@ -217,7 +217,7 @@ function buildYearHeatmap(
   let cursor = new Date(gridStart)
 
   while (cursor <= gridEnd) {
-    const weekIndex = diffDays(gridStart, cursor) / 7
+    const weekIndex = Math.floor(diffDays(gridStart, cursor) / 7)
     const weekday = cursor.getDay()
     const dateKey = formatDateKey(cursor)
     const totalMinutes = dailyMinutes.get(dateKey) ?? 0

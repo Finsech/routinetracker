@@ -46,6 +46,7 @@ type TodayLlmViewState = {
 }
 
 const todayLlmViewCache = new Map<string, TodayLlmViewState>()
+const AUTO_SUMMARY_INTERVAL_MS = 30 * 60 * 1000
 
 export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   const selectedDateKey = useMemo(() => formatDateKey(selectedDate), [selectedDate])
@@ -66,6 +67,8 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   )
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
   const [selectedHour, setSelectedHour] = useState<SelectedHour | null>(null)
+  const [lastLlmBuildSignature, setLastLlmBuildSignature] = useState<string | null>(null)
+  const [nextAutoSummaryAt, setNextAutoSummaryAt] = useState<number | null>(null)
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const todayDateKey = useMemo(() => formatDateKey(new Date()), [])
   const pendingIdleLog = useMemo(() => {
@@ -89,6 +92,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     [llmPayload, llmSettings],
   )
   const flows = llmFlows ?? summary.flows
+  const focusMetricValue = buildFocusMetricValue(flows, summary.activeTime)
 
   useEffect(() => {
     let active = true
@@ -157,6 +161,15 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
   }, [selectedDateKey])
 
   useEffect(() => {
+    if (selectedDateKey === todayDateKey) {
+      setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
+      return
+    }
+
+    setNextAutoSummaryAt(null)
+  }, [selectedDateKey, todayDateKey])
+
+  useEffect(() => {
     if (llmSummaryDateKey !== null && llmSummaryDateKey !== selectedDateKey) {
       return
     }
@@ -200,6 +213,8 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         setLlmCachedAt(cachedSummary.created_at)
         setLlmError(null)
         setLlmSummaryDateKey(selectedDateKey)
+        setLastLlmBuildSignature(llmCacheSignature)
+        setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
       } catch {
         if (active) {
           setLlmError("Не удалось загрузить сохраненную группировку дня")
@@ -214,7 +229,41 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     }
   }, [llmCacheSignature, llmPayload, llmSettings, llmSummaryDateKey, selectedDateKey])
 
-  async function generateLlmSummary() {
+  useEffect(() => {
+    if (selectedDateKey !== todayDateKey) {
+      return
+    }
+
+    const interval = window.setInterval(() => {
+      if (llmLoading || llmPayload.items.length === 0 || nextAutoSummaryAt === null) {
+        return
+      }
+
+      if (Date.now() < nextAutoSummaryAt) {
+        return
+      }
+
+      setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
+
+      if (lastLlmBuildSignature === llmCacheSignature) {
+        return
+      }
+
+      void generateLlmSummary("auto")
+    }, 30_000)
+
+    return () => window.clearInterval(interval)
+  }, [
+    lastLlmBuildSignature,
+    llmCacheSignature,
+    llmLoading,
+    llmPayload.items.length,
+    nextAutoSummaryAt,
+    selectedDateKey,
+    todayDateKey,
+  ])
+
+  async function generateLlmSummary(mode: "manual" | "auto" = "manual") {
     setLlmLoading(true)
     setLlmError(null)
 
@@ -223,6 +272,8 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       const nextFlows = buildFlowsFromLlmGroups(llmPayload, groups)
       setLlmFlows(nextFlows)
       setLlmSummaryDateKey(selectedDateKey)
+      setLastLlmBuildSignature(llmCacheSignature)
+      setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
 
       try {
         const savedSummary = await saveLlmSummary({
@@ -240,7 +291,11 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     } catch (caughtError) {
       const message =
         caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ локальной модели"
-      setLlmError(`Группировка дня пока не сработала: ${message}`)
+      setLlmError(
+        mode === "auto"
+          ? `Автосборка дня пока не сработала: ${message}`
+          : `Группировка дня пока не сработала: ${message}`,
+      )
     } finally {
       setLlmLoading(false)
     }
@@ -308,10 +363,10 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             <>
               <p className="font-['Georgia'] text-[1.72rem] text-[#24382F]">Твой день</p>
               <div className="mt-4">
-                <FocusDonut centerLabel="Фокус" centerValue={summary.activeTime} segments={donutSegments} />
+                <FocusDonut centerLabel="Активно" centerValue={summary.activeTime} segments={donutSegments} />
               </div>
               <div className="mt-4 space-y-2.5">
-                <InsightMetric label="Фокус" value={summary.focusPercent} />
+                <InsightMetric label="Фокус" value={focusMetricValue} />
                 <InsightMetric label="Активно" value={summary.activeTime} />
                 <InsightMetric label="Простой" value={summary.idleTime} />
               </div>
@@ -347,7 +402,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
           <Button
             className="mt-4 w-full rounded-full"
             disabled={llmLoading || llmPayload.items.length === 0}
-            onClick={() => void generateLlmSummary()}
+            onClick={() => void generateLlmSummary("manual")}
             size="lg"
             type="button"
           >
@@ -700,6 +755,25 @@ function formatDateKey(value: Date) {
   const month = String(value.getMonth() + 1).padStart(2, "0")
   const day = String(value.getDate()).padStart(2, "0")
   return `${year}-${month}-${day}`
+}
+
+function buildFocusMetricValue(flows: FlowSummary[], activeTime: string) {
+  const activeMinutes = parseDuration(activeTime)
+
+  if (activeMinutes <= 0) {
+    return "0 мин / 0%"
+  }
+
+  const focusMinutes = flows
+    .filter((flow) => flow.name === "Работа" || flow.name === "Обучение")
+    .reduce((sum, flow) => sum + parseDuration(flow.time), 0)
+
+  if (focusMinutes <= 0) {
+    return "Пока не определен"
+  }
+
+  const focusPercent = Math.max(0, Math.min(100, Math.round((focusMinutes / activeMinutes) * 100)))
+  return `${formatMinutes(focusMinutes)} / ${focusPercent}%`
 }
 
 function readTodayLlmViewState(dateKey: string): TodayLlmViewState {

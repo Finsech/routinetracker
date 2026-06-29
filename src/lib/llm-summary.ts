@@ -121,7 +121,7 @@ export function buildLlmSummaryPayload(
       kind: "idle" as const,
       note: log.note,
       start_time: log.start_time,
-      title: log.note || "???????",
+      title: log.note || "Перерыв",
       url: null,
       duration_minutes: roundMinutes(durationMinutes(log)),
       episodes: 1,

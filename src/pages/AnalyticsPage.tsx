@@ -108,7 +108,6 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
     [flows],
   )
   const topFlow = flows[0] ?? null
-  const secondaryFlow = flows[1] ?? null
   const focusMinutes = parseDuration(summary.activeTime)
   const idleMinutes = parseDuration(summary.idleTime)
 
@@ -262,7 +261,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
                 </div>
 
                 <p className="mt-3 text-sm text-[#7A8C83]">
-                  {flow.streams.length} стримов, {secondaryFlow?.name === flow.name ? "второй по объему поток" : "заметная часть дня"}.
+                  {buildFlowFootnote(flow, flows)}.
                 </p>
               </div>
             ))}
@@ -391,6 +390,31 @@ function buildRhythmValue(focusMinutes: number, idleMinutes: number) {
 
 function buildRhythmHint(activeTime: string, idleTime: string, contextSwitches: number) {
   return `Активной работы ${activeTime}, пауз ${idleTime}, переключений контекста — ${contextSwitches}.`
+}
+
+function buildFlowFootnote(flow: FlowSummary, flows: FlowSummary[]) {
+  const totalMinutes = Math.max(1, flows.reduce((sum, item) => sum + parseDuration(item.time), 0))
+  const flowMinutes = parseDuration(flow.time)
+  const share = Math.round((flowMinutes / totalMinutes) * 100)
+  const rank = flows.findIndex((item) => item.name === flow.name)
+
+  if (rank === 0) {
+    return `${flow.streams.length} стримов, главный поток дня`
+  }
+
+  if (rank === 1) {
+    return `${flow.streams.length} стримов, второй по объему поток`
+  }
+
+  if (share >= 20) {
+    return `${flow.streams.length} стримов, крупный блок дня`
+  }
+
+  if (share >= 8) {
+    return `${flow.streams.length} стримов, поддерживающий поток`
+  }
+
+  return `${flow.streams.length} стримов, точечные эпизоды дня`
 }
 
 function parseDuration(value: string) {

@@ -11,6 +11,10 @@
 - Day LLM summary now survives simple view switches inside the app.
 - Navigation order is Today -> Day Analysis -> Week -> Settings.
 - Closing the main window now hides FocusFlow to tray; full exit is available only from tray menu.
+- Day timeline now builds its visible hour scale from real activity range instead of a hardcoded 09:00 start.
+- Day summary now supports automatic LLM regrouping every 30 minutes; manual rebuild resets the next auto cycle.
+- Year heatmap rendering was tightened to show tracked days through stronger cell coloring and explicit week/day coordinates.
+- Windows release installer is rebuilt from the current MVP state; macOS build preparation is documented in `MACOS_BUILD.md`.
 
 ## Статус
 
@@ -57,8 +61,8 @@
 - стартовый язык интерфейса - русский;
 - промежуточные UI-варианты желательно смотреть через браузерный dev server на мок-данных;
 - полноценная проверка native-функций выполняется через Tauri desktop dev mode;
-- будущий репозиторий GitHub должен быть приватным;
-- приватная публикация в GitHub откладывается до завершения визуального редизайна;
+- ближайшая публикация проекта на GitHub готовится как публичная;
+- публикация в GitHub идет после упаковки текущего MVP и подготовки репозиторного описания;
 - roadmap редизайна зафиксирован в `REDESIGN_ROADMAP.md`.
 
 ## Ближайшие этапы

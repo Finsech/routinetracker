@@ -39,8 +39,10 @@ type HoveredSegment = {
   segmentId: string
 }
 
-const START_HOUR = 9
-const END_HOUR = 22
+type HourRange = {
+  startHour: number
+  endHour: number
+}
 
 export function DayTimeline({
   items,
@@ -51,10 +53,12 @@ export function DayTimeline({
 }: DayTimelineProps) {
   const [hoveredSegment, setHoveredSegment] = useState<HoveredSegment | null>(null)
   const closeTimerRef = useRef<number | null>(null)
+  const hourRange = useMemo(() => resolveHourRange(items), [items])
   const visibleItems = items.filter(
-    (item) => item.endMinutes > START_HOUR * 60 && item.startMinutes < END_HOUR * 60,
+    (item) =>
+      item.endMinutes > hourRange.startHour * 60 && item.startMinutes < hourRange.endHour * 60,
   )
-  const rows = useMemo(() => buildHourTimelineRows(visibleItems), [visibleItems])
+  const rows = useMemo(() => buildHourTimelineRows(visibleItems, hourRange), [hourRange, visibleItems])
 
   function clearCloseTimer() {
     if (closeTimerRef.current !== null) {
@@ -102,9 +106,12 @@ export function DayTimeline({
       </div>
 
       <div className="mt-5 grid grid-cols-[76px_minmax(0,1fr)] gap-3">
-        <div className="space-y-2.5">
+        <div className="divide-y divide-transparent">
           {rows.map((row) => (
-            <div className="flex h-[52px] items-start pt-1 text-[13px] text-[#73867A]" key={row.hour}>
+            <div
+              className="flex h-[52px] items-start pt-2 text-[13px] text-[#73867A]"
+              key={row.hour}
+            >
               {formatHour(row.hour)}
             </div>
           ))}
@@ -125,7 +132,7 @@ export function DayTimeline({
             <div className="divide-y divide-[#EDE8E0]">
               {rows.map((row) => (
                 <button
-                  className={`block min-h-[52px] w-full px-3 py-2 text-left transition ${
+                  className={`block h-[52px] w-full px-3 py-2 text-left transition ${
                     selectedHour === row.hour ? "bg-[#F7FBF7]" : "hover:bg-[#FBFDFB]"
                   }`}
                   key={row.hour}
@@ -262,9 +269,9 @@ export function DayTimeline({
   )
 }
 
-function buildHourTimelineRows(items: TimelineItem[]): HourTimelineRow[] {
-  return Array.from({ length: END_HOUR - START_HOUR }, (_, index) => {
-    const hour = START_HOUR + index
+function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTimelineRow[] {
+  return Array.from({ length: range.endHour - range.startHour }, (_, index) => {
+    const hour = range.startHour + index
     const bucketStart = hour * 60
     const bucketEnd = (hour + 1) * 60
     const segmentsMap = new Map<string, Omit<DayTimelineSegment, "startOffsetMinutes">>()
@@ -325,6 +332,25 @@ function buildHourTimelineRows(items: TimelineItem[]): HourTimelineRow[] {
   })
 }
 
+function resolveHourRange(items: TimelineItem[]): HourRange {
+  if (items.length === 0) {
+    return {
+      startHour: 9,
+      endHour: 18,
+    }
+  }
+
+  const earliestMinute = Math.min(...items.map((item) => item.startMinutes))
+  const latestMinute = Math.max(...items.map((item) => item.endMinutes))
+  const startHour = clampHour(Math.floor(earliestMinute / 60))
+  const endHour = Math.min(24, Math.max(startHour + 1, Math.ceil(latestMinute / 60)))
+
+  return {
+    startHour,
+    endHour,
+  }
+}
+
 function resolveContext(item: TimelineItem) {
   if (item.kind === "idle") {
     return {
@@ -358,6 +384,10 @@ function resolveTooltipPosition(centerPercent: number) {
   }
 
   return "center"
+}
+
+function clampHour(value: number) {
+  return Math.max(0, Math.min(23, value))
 }
 
 function laterClock(left: string, right: string) {

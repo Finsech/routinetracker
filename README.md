@@ -1,79 +1,125 @@
 # FocusFlow
 
-FocusFlow - локальный desktop-трекер экранного времени и продуктивности для Windows 11.
+**RU:** FocusFlow — локальный desktop-трекер времени, который автоматически собирает активность по окнам и сайтам, а затем превращает шумный трек в понятные **потоки** и **стримы** с помощью локальной LLM.
 
-Проект строится на Tauri + React + Rust. UI на старте русскоязычный, промежуточные интерфейсные варианты можно смотреть в браузере через Vite, а native-функции проверяются через Tauri desktop dev mode.
+**EN:** FocusFlow is a local-first desktop time tracker that captures real window and browser activity, then turns noisy logs into human-readable **flows** and **streams** with a local LLM.
 
-## Команды
+## Киллер-фичи / Killer features
 
-Установить зависимости:
+- **Локальный first**: SQLite, локальный трек, локальная Ollama, без обязательной отправки данных в облако.
+- **Реальный цифровой трек**: активные окна, заголовки, browser URL через локальный bridge.
+- **Из шума в смысл**: LLM группирует активность не только по приложениям, а по проектам, задачам и потокам работы.
+- **Понятная картина дня и недели**: Dayflow-inspired интерфейс с дневным и недельным таймлайном, heatmap и обзорной аналитикой.
+- **Фоновая работа**: приложение живет в системном трее, а не требует постоянного ручного участия.
+- **Контроль приватности**: stoplist для приложений и сайтов, экспорт в JSON, локальная база.
+
+## Russian overview
+
+FocusFlow помогает ответить на вопрос не только **сколько времени** ушло за экраном, но и **на что именно** оно ушло.
+
+Приложение:
+
+- автоматически отслеживает активные окна и сайты;
+- фиксирует простои;
+- показывает таймлайн дня и ритм недели;
+- собирает сводку по потокам вроде `Работа`, `Обучение`, `Общение`, `Рутина`;
+- раскладывает поток `Работа` на конкретные стримы и проекты;
+- умеет жить локально и не тащить трек в облако по умолчанию.
+
+На практике это трекер, который ближе к **анализу реальной работы**, чем к простому таймеру или учету “времени в приложениях”.
+
+## English overview
+
+FocusFlow is built for a more useful question than “how long was the screen on?” — it aims to show **what your time actually went into**.
+
+The app:
+
+- tracks active windows and browser activity automatically;
+- detects idle periods;
+- renders a day timeline and week rhythm view;
+- groups time into higher-level flows such as `Work`, `Learning`, `Communication`, and `Routine`;
+- breaks `Work` down into concrete streams and projects;
+- keeps the whole pipeline local-first by default.
+
+In practice, it is closer to a **project-aware productivity tracker** than to a basic app usage timer.
+
+## Tech stack
+
+- **Framework:** Tauri
+- **Backend:** Rust
+- **Frontend:** React + TypeScript
+- **Styling:** Tailwind CSS
+- **Database:** local SQLite
+- **Local AI:** Ollama
+
+## Commands
+
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-Запустить web-preview:
+Run web preview:
 
 ```bash
 npm run dev
 ```
 
-Проверить frontend-сборку:
+Build frontend:
 
 ```bash
 npm run build
 ```
 
-Проверить Rust/Tauri:
+Check Rust/Tauri:
 
 ```bash
 cd src-tauri
 cargo check
 ```
 
-Запустить desktop dev mode:
+Run desktop dev mode:
 
 ```bash
 npm run tauri dev
 ```
 
-## Документация
+Build desktop app:
 
-- `SPECIFICATION.md` - основная спецификация продукта.
-- `ROADMAP.md` - текущий статус и порядок работ.
-- `AGENTS.md` - правила работы AI-агента в проекте.
-- `orchestrator/` - отложенная идея будущего оркестратора разработки.
+```bash
+npm run tauri build
+```
 
-## Текущий статус
+## Documentation
 
-Готов официальный scaffold Tauri + React, подключены Tailwind CSS и shadcn/ui. Первый UI-прототип на мок-данных разложен на страницы, app-shell и dashboard-компоненты.
+- `SPECIFICATION.md` — product specification
+- `ROADMAP.md` — status and implementation order
+- `RELEASE_NOTES.md` — release snapshot
+- `MACOS_BUILD.md` — notes for the first macOS build pass
+- `AGENTS.md` — project rules for the AI agent
 
-На Rust-стороне добавлен SQLite-слой с миграциями и Tauri-командами для activity log, settings, stoplist и сохраненных LLM-группировок. Экран настроек читает данные через frontend API-клиент: в Tauri runtime из SQLite, в браузере через fallback на мок-данные.
+## Current status
 
-Добавлен первый слой нативного трекинга: Tauri-команды запуска, остановки и статуса, Windows foreground-event hook для быстрой реакции на смену активного окна, polling-резерв, определение имени процесса и заголовка окна, базовый учет простоя после 10 минут без ввода, фильтрация активных интервалов короче 5 секунд, запись завершенных активных и idle-интервалов в SQLite, корректная остановка при закрытии окна. В боковой панели есть кнопка запуска и остановки трекинга, live-статус текущей активности и счетчик времени без ввода; в browser preview они работают через мок-режим.
+FocusFlow already has a working desktop MVP:
 
-Главный экран и история читают `activity_log` и `idle_log` через frontend API: дневной таймлайн, активное время, простой, недельная история и heatmap строятся из реальных записей SQLite. До ручного запуска LLM активности временно группируются по приложениям как `Сырые активности`.
+- native activity tracking on Windows;
+- local SQLite storage;
+- idle review flow;
+- browser URL bridge;
+- LLM day grouping through Ollama;
+- screens `Сегодня`, `Анализ дня`, `Неделя`, `Настройки`;
+- JSON export;
+- tray-based background behavior.
 
-Добавлен минимальный browser bridge: Tauri поднимает локальный HTTP endpoint `127.0.0.1:17653`, а расширение из `browser-extension/` отправляет URL и заголовок активной вкладки. Для браузерных процессов трекер подмешивает свежий URL в `activity_log.url`; статус моста виден на экране настроек.
+Windows release artifacts are already produced in:
 
-Для неуточненных idle-интервалов на главном экране показывается модалка: простой можно описать короткой заметкой, игнорировать или отложить уточнение.
+- `src-tauri/target/release/focusflow.exe`
+- `src-tauri/target/release/bundle/msi/FocusFlow_0.1.0_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.0_x64-setup.exe`
 
-Экран настроек умеет управлять stoplist-приложениями. Процессы из stoplist не записываются в активные интервалы.
+## Known limitations
 
-Экран настроек умеет выгружать данные в JSON: активные интервалы, простои, настройки, stoplist и сохраненные LLM-группировки.
-
-На главном экране есть блок `LLM-группировка`: он собирает активности и idle-интервалы текущего дня в JSON payload, умеет копировать payload и вручную отправлять его в локальную Ollama. Результат LLM переводится в карточки потоков и стримов вместо временной группировки по приложениям, сохраняется в SQLite и автоматически переиспользуется для того же payload и модели. Адрес Ollama и модель настраиваются на экране настроек; рабочая локальная модель по умолчанию - `qwen2.5:7b-instruct`.
-
-Стримы на главном экране кликабельны: модальное окно показывает исходные активности, приложения, интервалы и длительность, вошедшие в выбранную группировку.
-
-Основная frontend-структура:
-
-- `src/pages/` - экраны приложения.
-- `src/components/app/` - каркас приложения и навигация.
-- `src/components/dashboard/` - виджеты метрик, таймлайнов, потоков и heatmap.
-- `src/data/mock.ts` - мок-данные для browser preview и будущих UI-сценариев.
-- `src/lib/activity-analytics.ts` - frontend-агрегация activity log для экранов сегодня и истории.
-- `src/lib/llm-summary.ts` - подготовка JSON payload, запрос к Ollama и преобразование LLM-ответа в карточки потоков.
-- `src/lib/focusflow-api.ts` - frontend API-клиент для Tauri-команд и browser fallback.
-- `src/types.ts` - общие frontend-типы.
-- `browser-extension/` - минимальное расширение для отправки URL активной вкладки в локальный FocusFlow.
+- browser URL tracking requires the local browser extension from `browser-extension/`;
+- LLM grouping quality depends on the locally available Ollama model;
+- full macOS build output requires a macOS host or a macOS CI runner.

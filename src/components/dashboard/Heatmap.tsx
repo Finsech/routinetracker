@@ -1,4 +1,5 @@
 import type { HeatmapCell, HeatmapMonthLabel } from "@/types"
+import { Fragment } from "react"
 
 type HeatmapProps = {
   cells: HeatmapCell[]
@@ -10,6 +11,9 @@ const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
 
 export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
   const weeks = Math.max(...cells.map((cell) => cell.weekIndex), 0) + 1
+  const cellsByCoordinate = new Map(
+    cells.map((cell) => [`${cell.weekIndex}:${cell.weekday}`, cell] as const),
+  )
 
   return (
     <section className="rounded-[28px] border border-white/70 bg-white/88 p-6 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
@@ -46,12 +50,30 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
             })}
 
             {DAY_LABELS.map((label, weekday) => (
-              <Row
-                cells={cells.filter((cell) => cell.weekday === weekday)}
-                key={label}
-                label={label}
-                weeks={weeks}
-              />
+              <Fragment key={label}>
+                <div className="pr-2 text-[11px] text-[#73867A]">{label}</div>
+                {Array.from({ length: weeks }, (_, weekIndex) => {
+                  const cell = cellsByCoordinate.get(`${weekIndex}:${weekday}`)
+
+                  return (
+                    <div
+                      className="size-3 rounded-[3px]"
+                      key={`${label}-${weekIndex}`}
+                      style={{
+                        backgroundColor:
+                          cell && cell.totalMinutes > 0
+                            ? colorForLevel(Math.max(cell.level, 1))
+                            : colorForLevel(0),
+                      }}
+                      title={
+                        cell
+                          ? `${cell.dateKey}: ${(cell.totalMinutes / 60).toFixed(1)} ч`
+                          : `${label}: нет данных`
+                      }
+                    />
+                  )
+                })}
+              </Fragment>
             ))}
           </div>
         </div>
@@ -74,47 +96,15 @@ export function Heatmap({ cells, months, totalHours }: HeatmapProps) {
   )
 }
 
-function Row({
-  cells,
-  label,
-  weeks,
-}: {
-  cells: HeatmapCell[]
-  label: string
-  weeks: number
-}) {
-  return (
-    <>
-      <div className="pr-2 text-[11px] text-[#73867A]">{label}</div>
-      {Array.from({ length: weeks }, (_, weekIndex) => {
-        const cell = cells.find((item) => item.weekIndex === weekIndex)
-
-        return (
-          <div
-            className="size-3 rounded-[3px]"
-            key={`${label}-${weekIndex}`}
-            style={{ backgroundColor: colorForLevel(cell?.level ?? 0) }}
-            title={
-              cell
-                ? `${cell.dateKey}: ${(cell.totalMinutes / 60).toFixed(1)} ч`
-                : `${label}: нет данных`
-            }
-          />
-        )
-      })}
-    </>
-  )
-}
-
 function colorForLevel(level: number) {
   return (
     [
       "#EEF2EE",
-      "#6A7F72",
-      "#4E9C66",
-      "#38B05B",
-      "#26C45A",
-      "#12D84E",
+      "#B8C7BC",
+      "#82BA91",
+      "#59B66F",
+      "#2FC35A",
+      "#14D84B",
     ][level] ?? "#EEF2EE"
   )
 }

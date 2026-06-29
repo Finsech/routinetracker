@@ -60,17 +60,23 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
     }
   }, [])
 
-  useEffect(() => {
-    if (!selectedDayKey && summary.weekDays[0]) {
-      setSelectedDayKey(summary.weekDays[0].dateKey)
-    }
-  }, [selectedDayKey, summary.weekDays])
-
   const selectedDay =
-    summary.weekDays.find((day) => day.dateKey === selectedDayKey) ?? summary.weekDays[0] ?? null
+    summary.weekDays.find((day) => day.dateKey === selectedDayKey) ?? null
   const selectedDayBar = useMemo(
     () => (selectedDay ? buildWeekTimelineDayBar(selectedDay) : null),
     [selectedDay],
+  )
+  const weekContextBar = useMemo(
+    () =>
+      buildWeekTimelineDayBar({
+        dateKey: "week",
+        label: "Неделя",
+        shortLabel: "Нед",
+        dayNumber: "",
+        totalMinutes: summary.weekDays.reduce((sum, day) => sum + day.totalMinutes, 0),
+        items: summary.weekDays.flatMap((day) => day.items),
+      }),
+    [summary.weekDays],
   )
   const busiestDay = useMemo(
     () =>
@@ -93,11 +99,12 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
       null
     )
   }, [summary.weekDays])
-  const rangeLabel = selectedDay
-    ? `${formatWeekDate(summary.weekDays[0]?.dateKey)} - ${formatWeekDate(
-        summary.weekDays[summary.weekDays.length - 1]?.dateKey,
-      )}`
-    : "Неделя пока пустая"
+  const rangeLabel =
+    summary.weekDays.length > 0
+      ? `${formatWeekDate(summary.weekDays[0]?.dateKey)} - ${formatWeekDate(
+          summary.weekDays[summary.weekDays.length - 1]?.dateKey,
+        )}`
+      : "Неделя пока пустая"
 
   return (
     <div className="space-y-4">
@@ -121,7 +128,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
         <WeekTimeline
           days={summary.weekDays}
           onDaySelect={(day) => {
-            setSelectedDayKey(day.dateKey)
+            setSelectedDayKey((current) => (current === day.dateKey ? null : day.dateKey))
           }}
           selectedDayKey={selectedDay?.dateKey ?? null}
         />
@@ -147,14 +154,15 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                 <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
                   <div className="flex items-center gap-2 text-[#6E8176]">
                     <CalendarRange className="size-4" />
-                    <span className="text-[13px]">Выбранный день</span>
+                    <span className="text-[13px]">Фокус периода</span>
                   </div>
                   <p className="mt-2.5 text-[1.2rem] font-medium text-[#274034]">
-                    {selectedDay.shortLabel} {selectedDay.dayNumber}
+                    {selectedDay ? `${selectedDay.shortLabel} ${selectedDay.dayNumber}` : "Вся неделя"}
                   </p>
                   <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
-                    {selectedDay.items.length} интервалов, {formatMinutes(selectedDay.totalMinutes)}{" "}
-                    активности.
+                    {selectedDay
+                      ? `${selectedDay.items.length} интервалов, ${formatMinutes(selectedDay.totalMinutes)} активности.`
+                      : `${summary.weekDays.reduce((sum, day) => sum + day.items.length, 0)} интервалов, ${formatMinutes(totalTrackedMinutes)} активности.`}
                   </p>
                 </div>
 
@@ -184,40 +192,58 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
                     )}
                   </p>
                 </div>
-
-                {selectedDayBar && (
-                  <div className="mt-4 space-y-3">
-                    {selectedDayBar.segments.map((segment) => (
-                      <div
-                        className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
-                        key={segment.id}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span
-                              className="size-2.5 rounded-full"
-                              style={{ backgroundColor: segment.accent }}
-                            />
-                            <p className="truncate text-sm font-medium text-[#273E31]">
-                              {segment.label}
-                            </p>
-                          </div>
-                          <span className="text-sm text-[#62756A]">
-                            {formatMinutes(segment.durationMinutes)}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs text-[#7B8D84]">
-                          {segment.episodes} эпизодов
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </>
             ) : null}
           </section>
         </aside>
       </section>
+
+      {(selectedDayBar ?? weekContextBar).segments.length > 0 && (
+        <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="font-['Georgia'] text-[1.65rem] text-[#24382F]">
+                {selectedDay ? "Контексты дня" : "Контексты недели"}
+              </p>
+              <p className="mt-1.5 text-[13px] leading-6 text-[#6F8177]">
+                {selectedDay
+                  ? "Состав выбранного дня вынесен отдельно, чтобы не перегружать блок ритма недели."
+                  : "Пока день не выбран, здесь собран общий срез недели по приложениям и сайтам."}
+              </p>
+            </div>
+            <div className="rounded-full border border-[#E3ECE5] bg-[#FBFDFB] px-3 py-1 text-[12px] text-[#667A6E]">
+              {selectedDay ? `${selectedDay.shortLabel} ${selectedDay.dayNumber}` : "Вся неделя"}
+            </div>
+          </div>
+
+          <div className="mt-4 h-[450px] overflow-y-auto rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] p-3">
+            <div className="space-y-3">
+              {(selectedDayBar ?? weekContextBar).segments.map((segment) => (
+                <div
+                  className="rounded-[20px] border border-[#E3ECE5] bg-white px-4 py-3"
+                  key={segment.id}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="size-2.5 rounded-full"
+                        style={{ backgroundColor: segment.accent }}
+                      />
+                      <p className="truncate text-sm font-medium text-[#273E31]">
+                        {segment.label}
+                      </p>
+                    </div>
+                    <span className="text-sm text-[#62756A]">
+                      {formatMinutes(segment.durationMinutes)}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-[#7B8D84]">{segment.episodes} эпизодов</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <Heatmap
         cells={summary.heatmap}

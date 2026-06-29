@@ -204,7 +204,7 @@ export function SettingsPage() {
       await setSetting("autostart", actualValue ? "Включен" : "Выключен")
       setRows((current) =>
         current.map((row) =>
-          row.label === "РђРІС‚РѕР·Р°РїСѓСЃРє" || row.label === "Автозапуск"
+          row.label === "Автозапуск"
             ? { ...row, value: actualValue ? "Включен" : "Выключен" }
             : row,
         ),
@@ -244,7 +244,7 @@ export function SettingsPage() {
           >
             <div className="grid gap-3">
               {visibleRows.map((row) => (
-                row.label === "РђРІС‚РѕР·Р°РїСѓСЃРє" || row.label === "Автозапуск" ? (
+                row.label === "Автозапуск" ? (
                   <AutostartMetric
                     enabled={autostartEnabled}
                     key={row.label}
