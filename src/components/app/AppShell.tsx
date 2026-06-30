@@ -85,9 +85,20 @@ export function AppShell({
     void refreshStatus()
     const interval = window.setInterval(refreshStatus, 2000)
 
+    function handleResume() {
+      if (document.visibilityState === "visible") {
+        void refreshStatus()
+      }
+    }
+
+    window.addEventListener("focus", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+
     return () => {
       active = false
       window.clearInterval(interval)
+      window.removeEventListener("focus", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
     }
   }, [])
 

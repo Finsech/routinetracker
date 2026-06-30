@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, Focus, Sparkles } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
@@ -34,6 +34,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerMonth, setPickerMonth] = useState(() => startOfMonth(selectedDate))
   const [error, setError] = useState<string | null>(null)
+  const pickerRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     let active = true
@@ -69,9 +70,20 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
     void loadData()
     const interval = window.setInterval(loadData, 10000)
 
+    function handleResume() {
+      if (document.visibilityState === "visible") {
+        void loadData()
+      }
+    }
+
+    window.addEventListener("focus", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+
     return () => {
       active = false
       window.clearInterval(interval)
+      window.removeEventListener("focus", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
     }
   }, [selectedDate])
 
@@ -80,7 +92,11 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
     [idleLogs, logs],
   )
   const availableDateSet = useMemo(() => new Set(availableDateKeys), [availableDateKeys])
-  const effectiveDateKey = selectedDateKey ?? availableDateKeys[0] ?? formatDateKey(selectedDate)
+  const selectedDateFallback = formatDateKey(selectedDate)
+  const effectiveDateKey =
+    (selectedDateKey && availableDateSet.has(selectedDateKey) ? selectedDateKey : null) ??
+    availableDateKeys[0] ??
+    selectedDateFallback
   const selectedDay = useMemo(() => parseDateKey(effectiveDateKey), [effectiveDateKey])
   const summary = useMemo(
     () => buildTodaySummary(logs, idleLogs, selectedDay),
@@ -92,6 +108,30 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
     setSelectedDateKey(formatDateKey(selectedDate))
     setPickerMonth(startOfMonth(selectedDate))
   }, [selectedDate])
+  useEffect(() => {
+    if (!selectedDateKey && availableDateKeys.length > 0) {
+      setSelectedDateKey(availableDateKeys[0])
+      return
+    }
+
+    if (selectedDateKey && !availableDateSet.has(selectedDateKey) && availableDateKeys.length > 0) {
+      setSelectedDateKey(availableDateKeys[0])
+    }
+  }, [availableDateKeys, availableDateSet, selectedDateKey])
+  useEffect(() => {
+    if (!pickerOpen) {
+      return
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (!pickerRef.current?.contains(event.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown)
+    return () => document.removeEventListener("mousedown", handlePointerDown)
+  }, [pickerOpen])
   const llmPayload = useMemo(
     () => buildLlmSummaryPayload(logs, idleLogs, selectedDay),
     [idleLogs, logs, selectedDay],
@@ -134,7 +174,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
             </p>
           </div>
 
-          <div className="relative">
+          <div className="relative" ref={pickerRef}>
             <button
               className="inline-flex items-center gap-2 rounded-full border border-[#DDE8DF] bg-white px-4 py-2 text-sm text-[#30463A] transition hover:border-[#C9DDD0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#CBE3D4] focus-visible:ring-offset-2 focus-visible:ring-offset-[#FFFDF8]"
               onClick={() => setPickerOpen((current) => !current)}
@@ -210,6 +250,12 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="mt-4 inline-flex items-center rounded-full border border-[#E3ECE5] bg-[#FBFDFB] px-3 py-1.5 text-xs text-[#6E8176]">
+          {availableDateKeys.length > 0
+            ? `${availableDateKeys.length} дней с треком в локальной истории`
+            : "Дни с треком появятся здесь после первых логов"}
         </div>
       </section>
 

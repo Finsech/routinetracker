@@ -270,7 +270,7 @@ export function DayTimeline({
   )
 }
 
-function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTimelineRow[] {
+export function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTimelineRow[] {
   return Array.from({ length: range.endHour - range.startHour }, (_, index) => {
     const hour = range.startHour + index
     const bucketStart = hour * 60
@@ -325,7 +325,7 @@ function buildHourTimelineRows(items: TimelineItem[], range: HourRange): HourTim
   })
 }
 
-function resolveHourRange(items: TimelineItem[]): HourRange {
+export function resolveHourRange(items: TimelineItem[]): HourRange {
   if (items.length === 0) {
     return {
       startHour: 9,

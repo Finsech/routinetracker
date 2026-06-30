@@ -1,7 +1,14 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import { requestOllamaGenerate } from "@/lib/tauri-api"
 import type { FlowStreamActivity, FlowSummary } from "@/types"
-import { buildContextHints, normalizeAppName, type FlowHint } from "@/lib/context-taxonomy"
+import {
+  buildContextHints,
+  isBrowserApp,
+  isWorkCandidateApp,
+  isWorkCandidateDomain,
+  normalizeAppName,
+  type FlowHint,
+} from "@/lib/context-taxonomy"
 
 type TimeRangeRecord = {
   start_time: string
@@ -15,6 +22,8 @@ export type LlmSummaryItem = {
   title: string | null
   url: string | null
   domain: string | null
+  project_hint?: string | null
+  project_key?: string | null
   note: string | null
   start_time: string
   end_time: string
@@ -89,14 +98,14 @@ const FLOW_ACCENTS: Record<string, string> = {
   "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435": "#38BDF8",
   "\u041e\u0431\u0449\u0435\u043d\u0438\u0435": "#A855F7",
   "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f": "#F97316",
-  "\u0420\u0443\u0442\u0438\u043d\u0430": "#F59E0B",
+  "\u041f\u0440\u043e\u0447\u0435\u0435": "#F59E0B",
 }
 const FLOW_NAME_MAP: Record<string, string> = {
   Work: "\u0420\u0430\u0431\u043e\u0442\u0430",
   Learning: "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435",
   Communication: "\u041e\u0431\u0449\u0435\u043d\u0438\u0435",
   Entertainment: "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f",
-  Routine: "\u0420\u0443\u0442\u0438\u043d\u0430",
+  Routine: "\u041f\u0440\u043e\u0447\u0435\u0435",
 }
 const GENERIC_STREAM_NAMES = new Set([
   "\u0440\u0430\u0431\u043e\u0442\u0430",
@@ -104,11 +113,13 @@ const GENERIC_STREAM_NAMES = new Set([
   "\u043e\u0431\u0449\u0435\u043d\u0438\u0435",
   "\u0440\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f",
   "\u0440\u0443\u0442\u0438\u043d\u0430",
+  "\u043f\u0440\u043e\u0447\u0435\u0435",
   "\u043a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f",
   "communication",
   "work",
   "learning",
   "routine",
+  "other",
   "entertainment",
   "stream",
   "task",
@@ -118,13 +129,24 @@ const MIN_PROJECT_ITEM_MINUTES = 8
 const MAX_PROJECTS_PER_BASE_CONTEXT = 3
 const LLM_CHUNK_SIZE = 12
 const LLM_REQUEST_TIMEOUT_MS = 240_000
+const MAX_MERGE_CANDIDATES = 18
+const OTHER_FLOW_NAME = "\u041f\u0440\u043e\u0447\u0435\u0435"
+const COMMUNICATION_FLOW_NAME = "\u041e\u0431\u0449\u0435\u043d\u0438\u0435"
 
 type LlmMergeCandidate = {
   stream_name: string
   flow_name: string
   total_minutes: number
   activities: number[]
+  project_hint?: string | null
+  project_key?: string | null
   examples: string[]
+}
+
+type PreclassifiedGroup = {
+  flow_name: string
+  stream_name: string
+  activities: number[]
 }
 
 export function buildLlmSummaryPayload(
@@ -147,6 +169,8 @@ export function buildLlmSummaryPayload(
           title: log.window_title,
           url: log.url,
           domain: hints.domain,
+          project_hint: hints.projectHint,
+          project_key: hints.projectKey,
           hint_flow: hints.hintFlow,
           duration_minutes: roundMinutes(durationMinutes(log)),
           examples: collectExamples(log.window_title, log.url),
@@ -165,6 +189,8 @@ export function buildLlmSummaryPayload(
       title: log.note || "\u041f\u0435\u0440\u0435\u0440\u044b\u0432",
       url: null,
       domain: null,
+      project_hint: null,
+      project_key: null,
       hint_flow: "Routine" as const,
       duration_minutes: roundMinutes(durationMinutes(log)),
       episodes: 1,
@@ -202,6 +228,12 @@ function collapseActivityLogsForLlm(logs: DraftLlmActivity[]) {
       existing.episodes = (existing.episodes ?? 1) + 1
       existing.examples = mergeExamples(existing.examples, item.examples)
       existing.title = selectRepresentativeTitle(existing, item)
+      if (!existing.project_hint && item.project_hint) {
+        existing.project_hint = item.project_hint
+      }
+      if (!existing.project_key && item.project_key) {
+        existing.project_key = item.project_key
+      }
       if (!existing.hint_flow && item.hint_flow) {
         existing.hint_flow = item.hint_flow
       }
@@ -274,13 +306,93 @@ function shrinkLlmItems(items: DraftLlmActivity[]) {
   return [...kept, mergeMinorContexts(tail, "\u041f\u0440\u043e\u0447\u0438\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0435 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u044b")]
 }
 
+function splitPayloadForHybridSummary(payload: LlmSummaryPayload) {
+  const llmItems: LlmSummaryItem[] = []
+  const directBuckets = new Map<string, PreclassifiedGroup>()
+
+  for (const item of payload.items) {
+    const directGroup = classifyDirectGroup(item)
+
+    if (!directGroup) {
+      llmItems.push(item)
+      continue
+    }
+
+    const key = `${directGroup.flow_name}::${directGroup.stream_name}`
+    const existing = directBuckets.get(key)
+
+    if (existing) {
+      existing.activities = [...new Set([...existing.activities, item.index])].sort((left, right) => left - right)
+      continue
+    }
+
+    directBuckets.set(key, {
+      ...directGroup,
+      activities: [item.index],
+    })
+  }
+
+  return {
+    directGroups: [...directBuckets.values()],
+    llmPayload: {
+      ...payload,
+      items: llmItems,
+    },
+  }
+}
+
+function classifyDirectGroup(item: LlmSummaryItem): Omit<PreclassifiedGroup, "activities"> | null {
+  if (item.kind === "idle") {
+    return {
+      flow_name: OTHER_FLOW_NAME,
+      stream_name: item.note?.trim() || "\u041f\u0435\u0440\u0435\u0440\u044b\u0432",
+    }
+  }
+
+  if (item.hint_flow === "Communication") {
+    return {
+      flow_name: COMMUNICATION_FLOW_NAME,
+      stream_name: deriveCommunicationStreamName([item]),
+    }
+  }
+
+  const hints = buildContextHints(item.app, item.url, item.title)
+  const projectBearing = Boolean(item.project_hint || hints.projectHint)
+  const workCandidate =
+    isWorkCandidateApp(hints.normalizedApp) ||
+    isWorkCandidateDomain(hints.domain) ||
+    (isBrowserApp(hints.normalizedApp) && Boolean(hints.domain))
+
+  if (workCandidate || projectBearing) {
+    return null
+  }
+
+  return {
+    flow_name: OTHER_FLOW_NAME,
+    stream_name: deriveOtherStreamName(item, hints.domain),
+  }
+}
+
+function deriveOtherStreamName(item: LlmSummaryItem, domain: string | null) {
+  if (domain) {
+    return domain
+  }
+
+  const title = item.title?.trim()
+  if (title && title.length >= 4 && !containsCjk(title)) {
+    return title.slice(0, 80)
+  }
+
+  return item.app.replace(/\.exe$/i, "")
+}
+
 export function stringifyLlmPayload(payload: LlmSummaryPayload) {
   return JSON.stringify(payload, null, 2)
 }
 
 export function buildLlmCacheSignature(payload: LlmSummaryPayload, settings: LlmProviderSettings) {
   return JSON.stringify({
-    version: 3,
+    version: 5,
     date: payload.date,
     provider: settings.provider,
     model: settings.model,
@@ -293,6 +405,8 @@ export function buildLlmCacheSignature(payload: LlmSummaryPayload, settings: Llm
       domain: item.domain,
       note: item.note,
       hint_flow: item.hint_flow,
+      project_hint: item.project_hint,
+      project_key: item.project_key,
       start_time: item.start_time,
       end_time: item.end_time,
       duration_minutes: item.duration_minutes,
@@ -317,7 +431,13 @@ export async function requestOllamaSummary(
     return []
   }
 
-  const chunks = splitPayloadIntoChunks(payload, LLM_CHUNK_SIZE)
+  const { directGroups, llmPayload } = splitPayloadForHybridSummary(payload)
+
+  if (llmPayload.items.length === 0) {
+    return directGroups
+  }
+
+  const chunks = splitPayloadIntoChunks(llmPayload, LLM_CHUNK_SIZE)
   const partialGroups: LlmSummaryGroup[] = []
 
   for (const chunk of chunks) {
@@ -326,14 +446,15 @@ export async function requestOllamaSummary(
   }
 
   if (chunks.length === 1) {
-    return partialGroups
+    return [...directGroups, ...partialGroups]
   }
 
   try {
-    return await requestMergePass(payload, partialGroups, settings)
+    const merged = await requestMergePass(llmPayload, partialGroups, settings)
+    return [...directGroups, ...merged]
   } catch (error) {
     console.warn("LLM merge pass failed, using flattened chunk groups", error)
-    return flattenChunkGroups(payload, partialGroups)
+    return [...directGroups, ...flattenChunkGroups(llmPayload, partialGroups)]
   }
 }
 
@@ -349,7 +470,7 @@ export function buildFlowsFromLlmGroups(
   const usedIndexes = new Set<number>()
 
   for (const group of groups) {
-    const flowName = group.flow_name.trim() || "\u0420\u0443\u0442\u0438\u043d\u0430"
+    const flowName = group.flow_name.trim() || OTHER_FLOW_NAME
     const streamName = group.stream_name.trim() || "\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f"
     const flow =
       flows.get(flowName) ??
@@ -378,7 +499,7 @@ export function buildFlowsFromLlmGroups(
   const missedItems = payload.items.filter((item) => !usedIndexes.has(item.index))
   if (missedItems.length > 0) {
     const flow =
-      flows.get("\u0420\u0443\u0442\u0438\u043d\u0430") ??
+      flows.get(OTHER_FLOW_NAME) ??
       new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
     const stream = flow.get("\u041d\u0435 \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e") ?? {
       minutes: 0,
@@ -393,7 +514,7 @@ export function buildFlowsFromLlmGroups(
     }
 
     flow.set("\u041d\u0435 \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e", stream)
-    flows.set("\u0420\u0443\u0442\u0438\u043d\u0430", flow)
+    flows.set(OTHER_FLOW_NAME, flow)
   }
 
   return [...flows.entries()]
@@ -447,6 +568,8 @@ function buildLlmPrompt(payload: LlmSummaryPayload) {
     title: item.title,
     url: item.url,
     domain: item.domain,
+    project_hint: item.project_hint ?? null,
+    project_key: item.project_key ?? null,
     note: item.note,
     duration_minutes: item.duration_minutes,
     episodes: item.episodes ?? 1,
@@ -467,7 +590,11 @@ Rules:
 - stream_name must be a short human-readable Russian label.
 - Never use Chinese, Japanese or Korean characters in stream_name.
 - If hint_flow is Communication, treat that activity as communication unless the input clearly proves otherwise.
+- If hint_flow is Work, treat that activity as work unless the input clearly proves otherwise.
 - Telegram, Slack, Discord, WhatsApp, MAX and Yandex Messenger contexts belong to Communication, including their web versions.
+- IDEs, design tools, project trackers, work calendars and video-call tools with hint_flow Work should stay inside Work and be grouped by project or workstream.
+- If project_hint is present, prefer it as the strongest clue for the stream name unless the examples clearly prove a better Russian project label.
+- If project_key is present, use it to keep the same project together across different apps and titles.
 - Use the examples array to infer concrete projects from document titles, Figma files, tasks, repositories, specs and browser tab names.
 - If the same project appears in several contexts, merge those activities into one stream.
 - Idle items with a note are valid user activity. Idle items without a note belong to Routine.
@@ -483,9 +610,7 @@ This input is only one chunk of the same day. Be precise inside the chunk and pr
 }
 
 function buildMergePrompt(payload: LlmSummaryPayload, candidates: LlmMergeCandidate[]) {
-  return `You are a productivity analyst for a Russian-language time tracker.
-
-You are merging partial summaries from several chunks of the same day into one final day summary.
+  return `You are merging chunk summaries for a Russian-language time tracker day.
 
 Return only JSON that matches the provided schema. Do not use markdown. Do not explain anything.
 
@@ -499,20 +624,23 @@ Rules:
 - Never use Chinese, Japanese or Korean characters in stream_name.
 - Merge candidates that clearly belong to the same project or stream across chunks.
 - Keep communication contexts inside Communication unless the input clearly proves otherwise.
+- Keep candidates with clear Work evidence inside Work unless the input clearly proves otherwise.
+- If several candidates share the same project_hint or clearly describe the same project, merge them into one stream.
+- If several candidates share the same project_key, merge them into one stream.
 - Prefer concrete project labels from examples over generic app names.
 
-Day info:
+Day:
 ${JSON.stringify(
     {
       date: payload.date,
       total_active_minutes: payload.total_active_minutes,
-      total_idle_minutes: payload.total_idle_minutes,
+      candidate_count: candidates.length,
     },
     null,
     2,
   )}
 
-Chunk candidates:
+Candidates:
 ${JSON.stringify(candidates, null, 2)}`
 }
 function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
@@ -538,7 +666,7 @@ function postProcessLlmGroups(payload: LlmSummaryPayload, groups: LlmSummaryGrou
     const forcedCommunication =
       items.length > 0 && items.every((item) => item.hint_flow === "Communication")
 
-    const flow_name = forcedCommunication ? "\u041e\u0431\u0449\u0435\u043d\u0438\u0435" : group.flow_name
+    const flow_name = forcedCommunication ? COMMUNICATION_FLOW_NAME : group.flow_name
     const stream_name = sanitizeStreamName(group.stream_name, flow_name, items)
 
     return {
@@ -654,12 +782,12 @@ function fallbackStreamNameByFlow(flowName: string) {
       return "\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
     case "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435":
       return "\u0423\u0447\u0435\u0431\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
-    case "\u041e\u0431\u0449\u0435\u043d\u0438\u0435":
+    case COMMUNICATION_FLOW_NAME:
       return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 \u0447\u0430\u0442\u0430\u0445"
     case "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f":
       return "\u0420\u0430\u0437\u0432\u043b\u0435\u043a\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
     default:
-      return "\u0420\u0443\u0442\u0438\u043d\u043d\u044b\u0435 \u0437\u0430\u0434\u0430\u0447\u0438"
+      return "\u041f\u0440\u043e\u0447\u0435\u0435"
   }
 }
 
@@ -806,7 +934,7 @@ async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) 
 function buildMergeCandidates(payload: LlmSummaryPayload, groups: LlmSummaryGroup[]): LlmMergeCandidate[] {
   const itemsByIndex = new Map(payload.items.map((item) => [item.index, item]))
 
-  return groups.map((group) => {
+  const rawCandidates = groups.map((group) => {
     const items = group.activities
       .map((index) => itemsByIndex.get(index) ?? null)
       .filter((item): item is LlmSummaryItem => item !== null)
@@ -816,12 +944,97 @@ function buildMergeCandidates(payload: LlmSummaryPayload, groups: LlmSummaryGrou
       flow_name: normalizeFlowNameForPrompt(group.flow_name),
       total_minutes: roundMinutes(items.reduce((sum, item) => sum + item.duration_minutes, 0)),
       activities: [...new Set(group.activities)].sort((left, right) => left - right),
+      project_hint:
+        items
+          .map((item) => item.project_hint)
+          .filter((value): value is string => Boolean(value))
+          .sort((left, right) => right.length - left.length)[0] ?? null,
+      project_key:
+        items
+          .map((item) => item.project_key)
+          .filter((value): value is string => Boolean(value))
+          .sort((left, right) => right.length - left.length)[0] ?? null,
       examples: mergeExamples(
         [],
         items.flatMap((item) => item.examples ?? [item.title ?? item.app]).filter(Boolean),
-      ),
+      ).slice(0, 3),
     }
   })
+
+  return compactMergeCandidates(rawCandidates)
+}
+
+function compactMergeCandidates(candidates: LlmMergeCandidate[]) {
+  const merged = new Map<string, LlmMergeCandidate>()
+
+  for (const candidate of candidates) {
+    const key = mergeCandidateKey(candidate)
+    const existing = merged.get(key)
+
+    if (existing) {
+      existing.total_minutes = roundMinutes(existing.total_minutes + candidate.total_minutes)
+      existing.activities = [...new Set([...existing.activities, ...candidate.activities])].sort(
+        (left, right) => left - right,
+      )
+      existing.examples = mergeExamples(existing.examples, candidate.examples).slice(0, 3)
+      if (!existing.project_hint && candidate.project_hint) {
+        existing.project_hint = candidate.project_hint
+      }
+      if (!existing.project_key && candidate.project_key) {
+        existing.project_key = candidate.project_key
+      }
+      continue
+    }
+
+    merged.set(key, {
+      ...candidate,
+      activities: [...candidate.activities].sort((left, right) => left - right),
+      examples: [...candidate.examples].slice(0, 3),
+    })
+  }
+
+  const compacted = [...merged.values()].sort((left, right) => right.total_minutes - left.total_minutes)
+
+  if (compacted.length <= MAX_MERGE_CANDIDATES) {
+    return compacted
+  }
+
+  const kept = compacted.slice(0, MAX_MERGE_CANDIDATES - 1)
+  const tail = compacted.slice(MAX_MERGE_CANDIDATES - 1)
+
+  return [
+    ...kept,
+    {
+      stream_name: "\u041f\u0440\u043e\u0447\u0438\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0435 \u0440\u0430\u0431\u043e\u0447\u0438\u0435 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u044b",
+      flow_name: "Work",
+      total_minutes: roundMinutes(tail.reduce((sum, item) => sum + item.total_minutes, 0)),
+      activities: [...new Set(tail.flatMap((item) => item.activities))].sort((left, right) => left - right),
+      project_hint: null,
+      project_key: null,
+      examples: mergeExamples(
+        [],
+        tail.flatMap((item) => item.examples),
+      ).slice(0, 3),
+    },
+  ]
+}
+
+function mergeCandidateKey(candidate: LlmMergeCandidate) {
+  const flow = candidate.flow_name
+
+  if (flow === "Communication") {
+    return `${flow}::${candidate.stream_name.trim().toLowerCase()}`
+  }
+
+  if (candidate.project_key) {
+    return `${flow}::project:${candidate.project_key}`
+  }
+
+  if (candidate.project_hint) {
+    return `${flow}::project:${slugify(candidate.project_hint)}`
+  }
+
+  return `${flow}::${candidate.stream_name.trim().toLowerCase()}`
 }
 
 function flattenChunkGroups(payload: LlmSummaryPayload, groups: LlmSummaryGroup[]) {
@@ -950,6 +1163,10 @@ function buildCollapseKey(item: DraftLlmActivity) {
 
   if (item.hint_flow === "Communication") {
     return base
+  }
+
+  if (hints.projectKey) {
+    return `${base}|project:${hints.projectKey}`
   }
 
   if (hints.projectHint) {

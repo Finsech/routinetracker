@@ -54,9 +54,20 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
     void loadLogs()
     const interval = window.setInterval(loadLogs, 10000)
 
+    function handleResume() {
+      if (document.visibilityState === "visible") {
+        void loadLogs()
+      }
+    }
+
+    window.addEventListener("focus", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+
     return () => {
       active = false
       window.clearInterval(interval)
+      window.removeEventListener("focus", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
     }
   }, [])
 
@@ -99,12 +110,40 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
       null
     )
   }, [summary.weekDays])
+  const selectedDaySwitches = useMemo(
+    () => (selectedDay ? countContextSwitches(selectedDay.items) : 0),
+    [selectedDay],
+  )
+  const selectedDayLongestItem = useMemo(() => {
+    if (!selectedDay) {
+      return null
+    }
+
+    return [...selectedDay.items].sort((left, right) => right.durationMinutes - left.durationMinutes)[0] ?? null
+  }, [selectedDay])
   const rangeLabel =
     summary.weekDays.length > 0
       ? `${formatWeekDate(summary.weekDays[0]?.dateKey)} - ${formatWeekDate(
           summary.weekDays[summary.weekDays.length - 1]?.dateKey,
         )}`
       : "Неделя пока пустая"
+  const activeMetricLabel = selectedDay ? "Выбранный день" : "Фокус периода"
+  const activeMetricValue = selectedDay
+    ? `${selectedDay.shortLabel} ${selectedDay.dayNumber}`
+    : busiestDay
+      ? `${busiestDay.shortLabel} ${busiestDay.dayNumber}`
+      : "Вся неделя"
+  const activeMetricHint = selectedDay
+    ? `${selectedDay.items.length} интервалов, ${formatMinutes(selectedDay.totalMinutes)} активности.`
+    : `${summary.weekDays.reduce((sum, day) => sum + day.items.length, 0)} интервалов, ${formatMinutes(totalTrackedMinutes)} активности.`
+  const activeLongestItem = selectedDay
+    ? selectedDayLongestItem
+      ? { item: selectedDayLongestItem, day: selectedDay }
+      : null
+    : longestItem
+  const headline = selectedDay
+    ? buildDayHeadline(selectedDay.totalMinutes, selectedDaySwitches, selectedDayLongestItem?.label ?? null)
+    : buildWeekHeadline(totalTrackedMinutes, busiestDay?.label ?? null, totalSwitches)
 
   return (
     <div className="space-y-4">
@@ -135,65 +174,69 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
 
         <aside className="space-y-5">
           <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
-            {selectedDay ? (
-              <>
-                <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">Ритм недели</p>
-                <p className="mt-1.5 text-[13px] leading-6 text-[#6F8177]">{rangeLabel}</p>
+            <p className="font-['Georgia'] text-[1.7rem] text-[#24382F]">
+              {selectedDay ? "День в фокусе" : "Ритм недели"}
+            </p>
+            <p className="mt-1.5 text-[13px] leading-6 text-[#6F8177]">
+              {selectedDay
+                ? `${selectedDay.label}. Клик по тому же дню снимет фокус и вернет общий weekly overview.`
+                : rangeLabel}
+            </p>
 
-                <div className="mt-4 grid gap-2.5">
-                  <InsightMetric label="Всего" value={formatMinutes(totalTrackedMinutes)} />
-                  <InsightMetric
-                    label="Самый плотный день"
-                    value={
-                      busiestDay ? `${busiestDay.shortLabel} ${busiestDay.dayNumber}` : "Пока нет"
-                    }
-                  />
-                  <InsightMetric label="Переключения" value={`${totalSwitches}`} />
+            <div className="mt-4 grid gap-2.5">
+              <InsightMetric
+                label="Всего"
+                value={formatMinutes(selectedDay ? selectedDay.totalMinutes : totalTrackedMinutes)}
+              />
+              <InsightMetric
+                label={selectedDay ? "Контекст-переключения" : "Самый плотный день"}
+                value={
+                  selectedDay
+                    ? `${selectedDaySwitches}`
+                    : busiestDay
+                      ? `${busiestDay.shortLabel} ${busiestDay.dayNumber}`
+                      : "Пока нет"
+                }
+              />
+              <InsightMetric
+                label={selectedDay ? "Эпизоды" : "Переключения"}
+                value={selectedDay ? `${selectedDay.items.length}` : `${totalSwitches}`}
+              />
+            </div>
+
+            <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+              <div className="flex items-center gap-2 text-[#6E8176]">
+                <CalendarRange className="size-4" />
+                <span className="text-[13px]">{activeMetricLabel}</span>
+              </div>
+              <p className="mt-2.5 text-[1.2rem] font-medium text-[#274034]">
+                {activeMetricValue}
+              </p>
+              <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
+                {activeMetricHint}
+              </p>
+            </div>
+
+            {activeLongestItem && (
+              <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+                <div className="flex items-center gap-2 text-[#6E8176]">
+                  <Clock3 className="size-4" />
+                  <span className="text-[13px]">Самый длинный интервал</span>
                 </div>
+                <p className="mt-2.5 text-[1rem] font-medium text-[#274034]">
+                  {activeLongestItem.item.label}
+                </p>
+                <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
+                  {formatMinutes(activeLongestItem.item.durationMinutes)} в{" "}
+                  {activeLongestItem.day.shortLabel.toLowerCase()} {activeLongestItem.day.dayNumber}.
+                </p>
+              </div>
+            )}
 
-                <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
-                  <div className="flex items-center gap-2 text-[#6E8176]">
-                    <CalendarRange className="size-4" />
-                    <span className="text-[13px]">Фокус периода</span>
-                  </div>
-                  <p className="mt-2.5 text-[1.2rem] font-medium text-[#274034]">
-                    {selectedDay ? `${selectedDay.shortLabel} ${selectedDay.dayNumber}` : "Вся неделя"}
-                  </p>
-                  <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
-                    {selectedDay
-                      ? `${selectedDay.items.length} интервалов, ${formatMinutes(selectedDay.totalMinutes)} активности.`
-                      : `${summary.weekDays.reduce((sum, day) => sum + day.items.length, 0)} интервалов, ${formatMinutes(totalTrackedMinutes)} активности.`}
-                  </p>
-                </div>
-
-                {longestItem && (
-                  <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
-                    <div className="flex items-center gap-2 text-[#6E8176]">
-                      <Clock3 className="size-4" />
-                      <span className="text-[13px]">Самый длинный интервал</span>
-                    </div>
-                    <p className="mt-2.5 text-[1rem] font-medium text-[#274034]">
-                      {longestItem.item.label}
-                    </p>
-                    <p className="mt-1.5 text-[13px] leading-6 text-[#7A8C83]">
-                      {formatMinutes(longestItem.item.durationMinutes)} в{" "}
-                      {longestItem.day.shortLabel.toLowerCase()} {longestItem.day.dayNumber}.
-                    </p>
-                  </div>
-                )}
-
-                <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
-                  <p className="text-[13px] text-[#6E8176]">Короткий вывод</p>
-                  <p className="mt-2 text-sm leading-6 text-[#50655A]">
-                    {buildWeekHeadline(
-                      totalTrackedMinutes,
-                      busiestDay?.label ?? null,
-                      totalSwitches,
-                    )}
-                  </p>
-                </div>
-              </>
-            ) : null}
+            <div className="mt-4 rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+              <p className="text-[13px] text-[#6E8176]">Короткий вывод</p>
+              <p className="mt-2 text-sm leading-6 text-[#50655A]">{headline}</p>
+            </div>
           </section>
         </aside>
       </section>
@@ -281,6 +324,26 @@ function buildWeekHeadline(
   }
 
   return `Самый плотный день — ${busiestDayLabel}. По неделе видно ${totalSwitches} заметных переключений контекста, так что ритм был скорее дробным.`
+}
+
+function buildDayHeadline(
+  totalTrackedMinutes: number,
+  contextSwitches: number,
+  longestLabel: string | null,
+) {
+  if (totalTrackedMinutes === 0) {
+    return "В этот день пока почти нет данных: как только появится больше активности, здесь станет видно, из чего сложился ритм."
+  }
+
+  if (!longestLabel) {
+    return `В выбранном дне уже есть ${formatMinutes(totalTrackedMinutes)} активности и ${contextSwitches} заметных переключений контекста.`
+  }
+
+  if (contextSwitches <= 2) {
+    return `День выглядит цельным: самым длинным отрезком был «${longestLabel}», а переключений контекста осталось совсем немного.`
+  }
+
+  return `День получился дробным: «${longestLabel}» был самым длинным отрезком, но параллельно накопилось ${contextSwitches} заметных переключений контекста.`
 }
 
 function countContextSwitches(items: { app: string; kind: "activity" | "idle" }[]) {

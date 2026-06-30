@@ -26,6 +26,13 @@
 - Post-release bugfix pass is now tightening three user-facing areas together: real-time geometry of the day timeline, reliable yearly heatmap visibility, and a datepicker-based day selector inside `РђРЅР°Р»РёР· РґРЅСЏ`.
 - Manual day regrouping is being hardened for long tracked days: the LLM payload is now trimmed so local Ollama models do not stall on 7+ hour sessions with hundreds of window switches.
 - Manual regrouping for long days is now moving from one oversized prompt to a two-stage chunk-and-merge pipeline so local 7B-class Ollama models stay usable beyond 7 tracked hours.
+- LLM regrouping is now moving toward a hybrid pipeline: rule-based preclassification should pull communication and obvious non-project contexts out of the expensive local-model path, leaving the LLM mostly with project-bearing work contexts.
+- The user-facing flow label `Рутина` is renamed to `Прочее` without changing the underlying collection logic.
+- Work hints are being widened so browsers, IDEs, design tools, work calendars and call tools are treated as project-bearing candidates instead of falling into `Прочее`.
+- Project detection is being reinforced with explicit `project_hint` values in the LLM payload so browser tabs, Cursor sessions and mixed work contexts merge around the actual project rather than generic app names.
+- Stable `project_key` values are now being introduced so one project can stay merged across browser, IDE and chunk boundaries even when its visible labels vary.
+- The merge-pass is being slimmed down so obvious same-project candidates are merged before the final LLM call, reducing latency on long workdays without changing the local model.
+- The Today hour inspector is now being kept live against refreshed logs and expanded with free-time, switch-count and scrollable raw-episode details so the day screen stays useful during active tracking.
 
 ## РЎС‚Р°С‚СѓСЃ
 
@@ -152,3 +159,12 @@ Roadmap РЅСѓР¶РЅРѕ РѕР±РЅРѕРІР»СЏС‚СЊ РїРѕСЃ�
 
 - пїЅпїЅпїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ.
 - пїЅпїЅпїЅпїЅ: пїЅпїЅпїЅпїЅпїЅпїЅ LLM-пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ loader, пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.
+- Week screen polish now focuses on a stable weekly default summary with optional day drill-in, instead of leaving the right-side insight panel empty until a day is selected.
+- Day Analysis now uses a sturdier datepicker flow: outside-click close, tracked-day fallback, and a clearer sense of how many locally tracked days are available.
+- Background-scenario hardening now includes immediate refresh after tray/focus return and keeping the current-day auto-summary cadence stable across simple view switches.
+
+## 2026-06-30 - Release 0.1.3
+
+- `0.1.3` is the current stabilization release.
+- The release bundles the hybrid `chunk + merge` LLM pipeline, project-aware work hints, `������` instead of `������`, stronger single-instance and tray behavior, and the latest Today-screen Russian text fixes.
+- The next cycle should focus on long-period observation, auto-summary validation, and small bugfixes instead of new scope.

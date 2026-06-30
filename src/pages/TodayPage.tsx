@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useState } from "react"
+﻿import { useCallback, useEffect, useMemo, useState } from "react"
 import { ArrowRight, LoaderCircle, Sparkles, X } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
-import { DayTimeline, type HourTimelineRow } from "@/components/dashboard/DayTimeline"
+import {
+  DayTimeline,
+  buildHourTimelineRows,
+  resolveHourRange,
+  type HourTimelineRow,
+} from "@/components/dashboard/DayTimeline"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { Button } from "@/components/ui/button"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
@@ -34,15 +39,13 @@ type SelectedStream = {
   stream: FlowStream
 }
 
-type SelectedHour = {
-  row: HourTimelineRow
-}
-
 type TodayLlmViewState = {
   flows: FlowSummary[] | null
   cachedAt: string | null
   error: string | null
   summaryDateKey: string | null
+  lastBuildSignature: string | null
+  nextAutoSummaryAt: number | null
 }
 
 const todayLlmViewCache = new Map<string, TodayLlmViewState>()
@@ -66,9 +69,13 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     initialLlmState.summaryDateKey,
   )
   const [selectedStream, setSelectedStream] = useState<SelectedStream | null>(null)
-  const [selectedHour, setSelectedHour] = useState<SelectedHour | null>(null)
-  const [lastLlmBuildSignature, setLastLlmBuildSignature] = useState<string | null>(null)
-  const [nextAutoSummaryAt, setNextAutoSummaryAt] = useState<number | null>(null)
+  const [selectedHour, setSelectedHour] = useState<number | null>(null)
+  const [lastLlmBuildSignature, setLastLlmBuildSignature] = useState<string | null>(
+    initialLlmState.lastBuildSignature,
+  )
+  const [nextAutoSummaryAt, setNextAutoSummaryAt] = useState<number | null>(
+    initialLlmState.nextAutoSummaryAt,
+  )
   const summary = useMemo(() => buildTodaySummary(logs, idleLogs, selectedDate), [idleLogs, logs, selectedDate])
   const todayDateKey = useMemo(() => formatDateKey(new Date()), [])
   const pendingIdleLog = useMemo(() => {
@@ -91,42 +98,59 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     () => buildLlmCacheSignature(llmPayload, llmSettings),
     [llmPayload, llmSettings],
   )
+  const hourRows = useMemo(
+    () => buildHourTimelineRows(summary.timeline, resolveHourRange(summary.timeline)),
+    [summary.timeline],
+  )
+  const selectedHourRow = useMemo(
+    () => (selectedHour === null ? null : hourRows.find((row) => row.hour === selectedHour) ?? null),
+    [hourRows, selectedHour],
+  )
   const flows = llmFlows ?? summary.flows
   const focusMetricValue = buildFocusMetricValue(flows, summary.activeTime)
+  const refreshLogs = useCallback(async () => {
+    try {
+      const [nextLogs, nextIdleLogs] = await Promise.all([getActivityLogs(), getIdleLogs()])
+      setLogs(nextLogs)
+      setIdleLogs(nextIdleLogs)
+      setError(null)
+    } catch {
+      setError("Не удалось загрузить активность")
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   useEffect(() => {
     let active = true
 
     async function loadLogs() {
-      try {
-        const [nextLogs, nextIdleLogs] = await Promise.all([getActivityLogs(), getIdleLogs()])
-
-        if (!active) {
-          return
-        }
-
-        setLogs(nextLogs)
-        setIdleLogs(nextIdleLogs)
-        setError(null)
-      } catch {
-        if (active) {
-          setError("Не удалось загрузить активности")
-        }
-      } finally {
-        if (active) {
-          setLoading(false)
-        }
+      if (!active) {
+        return
       }
+
+      await refreshLogs()
     }
 
     void loadLogs()
     const interval = window.setInterval(loadLogs, 5000)
 
+    function handleResume() {
+      if (document.visibilityState === "visible") {
+        void loadLogs()
+      }
+    }
+
+    window.addEventListener("focus", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+
     return () => {
       active = false
       window.clearInterval(interval)
+      window.removeEventListener("focus", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
     }
-  }, [])
+  }, [refreshLogs])
 
   useEffect(() => {
     let active = true
@@ -158,15 +182,18 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     setLlmCachedAt(cachedState.cachedAt)
     setLlmError(cachedState.error)
     setLlmSummaryDateKey(cachedState.summaryDateKey)
+    setLastLlmBuildSignature(cachedState.lastBuildSignature)
+    setNextAutoSummaryAt(cachedState.nextAutoSummaryAt)
   }, [selectedDateKey])
 
   useEffect(() => {
-    if (selectedDateKey === todayDateKey) {
-      setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
+    if (selectedDateKey !== todayDateKey) {
+      setNextAutoSummaryAt(null)
       return
     }
 
-    setNextAutoSummaryAt(null)
+    const cachedState = readTodayLlmViewState(selectedDateKey)
+    setNextAutoSummaryAt(cachedState.nextAutoSummaryAt ?? Date.now() + AUTO_SUMMARY_INTERVAL_MS)
   }, [selectedDateKey, todayDateKey])
 
   useEffect(() => {
@@ -179,8 +206,10 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       error: llmError,
       flows: llmFlows,
       summaryDateKey: llmSummaryDateKey,
+      lastBuildSignature: lastLlmBuildSignature,
+      nextAutoSummaryAt,
     })
-  }, [llmCachedAt, llmError, llmFlows, llmSummaryDateKey, selectedDateKey])
+  }, [llmCachedAt, llmError, llmFlows, llmSummaryDateKey, lastLlmBuildSignature, nextAutoSummaryAt, selectedDateKey])
 
   useEffect(() => {
     let active = true
@@ -253,6 +282,48 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
     }, 30_000)
 
     return () => window.clearInterval(interval)
+  }, [
+    lastLlmBuildSignature,
+    llmCacheSignature,
+    llmLoading,
+    llmPayload.items.length,
+    nextAutoSummaryAt,
+    selectedDateKey,
+    todayDateKey,
+  ])
+
+  useEffect(() => {
+    if (selectedDateKey !== todayDateKey) {
+      return
+    }
+
+    function handleResume() {
+      if (
+        document.visibilityState !== "visible" ||
+        llmLoading ||
+        llmPayload.items.length === 0 ||
+        nextAutoSummaryAt === null ||
+        Date.now() < nextAutoSummaryAt
+      ) {
+        return
+      }
+
+      setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
+
+      if (lastLlmBuildSignature === llmCacheSignature) {
+        return
+      }
+
+      void generateLlmSummary("auto")
+    }
+
+    window.addEventListener("focus", handleResume)
+    document.addEventListener("visibilitychange", handleResume)
+
+    return () => {
+      window.removeEventListener("focus", handleResume)
+      document.removeEventListener("visibilitychange", handleResume)
+    }
   }, [
     lastLlmBuildSignature,
     llmCacheSignature,
@@ -349,17 +420,17 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
           flows={flows}
           items={summary.timeline}
           onHourSelect={(row) => {
-            setSelectedHour({ row })
+            setSelectedHour(row.hour)
             setSelectedStream(null)
           }}
-          selectedHour={selectedHour?.row.hour ?? null}
+          selectedHour={selectedHour}
           totalTime={summary.activeTime}
         />
       </div>
 
       <aside className="space-y-5">
         <section className="rounded-[28px] border border-white/70 bg-white/88 p-5 shadow-[0_18px_60px_rgba(91,121,108,0.08)]">
-          {!selectedHour && !selectedStream ? (
+          {!selectedHourRow && !selectedStream ? (
             <>
               <p className="font-['Georgia'] text-[1.72rem] text-[#24382F]">Твой день</p>
               <div className="mt-4">
@@ -382,8 +453,8 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
                 </p>
               )}
             </>
-          ) : selectedHour ? (
-            <HourInspector onReset={() => setSelectedHour(null)} row={selectedHour.row} />
+          ) : selectedHourRow ? (
+            <HourInspector onReset={() => setSelectedHour(null)} row={selectedHourRow} />
           ) : selectedStream ? (
             <StreamInspector selectedStream={selectedStream} onReset={() => setSelectedStream(null)} />
           ) : null}
@@ -538,6 +609,11 @@ function HourInspector({
   row: HourTimelineRow
   onReset: () => void
 }) {
+  const freeMinutes = Math.max(0, 60 - row.coveredMinutes)
+  const contextSwitches = Math.max(
+    0,
+    row.segments.reduce((sum, segment) => sum + segment.episodes, 0) - 1,
+  )
   const details = row.segments.flatMap((segment) =>
     segment.details.map((detail) => ({
       detail,
@@ -564,10 +640,12 @@ function HourInspector({
       <div className="mt-4 space-y-3">
         <InspectorMetric label="Активно за час" value={formatMinutes(row.coveredMinutes)} />
         <InspectorMetric label="Контекстов" value={String(row.segments.length)} />
+        <InspectorMetric label="Свободно" value={formatMinutes(freeMinutes)} />
         <InspectorMetric
           label="Эпизодов"
           value={String(row.segments.reduce((sum, segment) => sum + segment.episodes, 0))}
         />
+        <InspectorMetric label="Переключений" value={String(contextSwitches)} />
       </div>
 
       <div className="mt-5 space-y-3">
@@ -587,25 +665,32 @@ function HourInspector({
           </div>
         ))}
 
-        {details.map(({ detail, contextLabel }, index) => (
-          <div
-            className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3"
-            key={`${detail.startMinutes}-${detail.endMinutes}-${detail.label}-${index}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-[#273E31]">{detail.label}</p>
-                <p className="mt-1 text-xs text-[#7B8D84]">
-                  {detail.app} • {contextLabel}
-                </p>
-              </div>
-              <span className="text-sm text-[#62756A]">{formatMinutes(detail.durationMinutes)}</span>
+        {details.length > 0 && (
+          <div className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4">
+            <p className="text-[13px] text-[#6E8176]">Сырые эпизоды часа</p>
+            <div className="mt-3 max-h-[280px] space-y-3 overflow-y-auto pr-1">
+              {details.map(({ detail, contextLabel }, index) => (
+                <div
+                  className="rounded-[20px] border border-[#E3ECE5] bg-white px-4 py-3"
+                  key={`${detail.startMinutes}-${detail.endMinutes}-${detail.label}-${index}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-[#273E31]">{detail.label}</p>
+                      <p className="mt-1 text-xs text-[#7B8D84]">
+                        {detail.app} • {contextLabel}
+                      </p>
+                    </div>
+                    <span className="text-sm text-[#62756A]">{formatMinutes(detail.durationMinutes)}</span>
+                  </div>
+                  <p className="mt-2 text-xs text-[#87978F]">
+                    {detail.start} - {detail.end}
+                  </p>
+                </div>
+              ))}
             </div>
-            <p className="mt-2 text-xs text-[#87978F]">
-              {detail.start} - {detail.end}
-            </p>
           </div>
-        ))}
+        )}
       </div>
     </div>
   )
@@ -783,6 +868,8 @@ function readTodayLlmViewState(dateKey: string): TodayLlmViewState {
       cachedAt: null,
       error: null,
       summaryDateKey: null,
+      lastBuildSignature: null,
+      nextAutoSummaryAt: null,
     }
   )
 }

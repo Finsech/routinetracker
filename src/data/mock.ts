@@ -21,7 +21,7 @@ export const flows: FlowSummary[] = [
     ],
   },
   {
-    name: "Рутина",
+    name: "Прочее",
     time: "35 мин",
     accent: "#F2B880",
     streams: [{ name: "Почта и календарь", time: "35 мин", activities: 6 }],
@@ -34,7 +34,7 @@ export const timeline: TimelineItem[] = [
   buildTimelineItem("12:00", "12:30", "Перерыв", "Idle", "Простой", "#D9A66C", "idle"),
   buildTimelineItem("13:00", "13:50", "Документация Tauri", "Browser", "Обучение", "#86B8E5"),
   buildTimelineItem("14:00", "15:10", "LLM-саммаризация", "Code", "Работа", "#7CB39A"),
-  buildTimelineItem("16:00", "16:35", "Почта и календарь", "Browser", "Рутина", "#F2B880"),
+  buildTimelineItem("16:00", "16:35", "Почта и календарь", "Browser", "Прочее", "#F2B880"),
 ]
 
 export const week: WeekActivity[] = [
