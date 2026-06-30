@@ -85,28 +85,26 @@ export const DEFAULT_LLM_SETTINGS: LlmProviderSettings = {
 }
 
 const FLOW_ACCENTS: Record<string, string> = {
-  "Работа": "#22C55E",
-  "Обучение": "#38BDF8",
-  "Общение": "#A855F7",
-  "Развлечения": "#F97316",
-  "Рутина": "#F59E0B",
+  "\u0420\u0430\u0431\u043e\u0442\u0430": "#22C55E",
+  "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435": "#38BDF8",
+  "\u041e\u0431\u0449\u0435\u043d\u0438\u0435": "#A855F7",
+  "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f": "#F97316",
+  "\u0420\u0443\u0442\u0438\u043d\u0430": "#F59E0B",
 }
-
 const FLOW_NAME_MAP: Record<string, string> = {
-  Work: "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°",
-  Learning: "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
-  Communication: "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
-  Entertainment: "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
-  Routine: "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°",
+  Work: "\u0420\u0430\u0431\u043e\u0442\u0430",
+  Learning: "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435",
+  Communication: "\u041e\u0431\u0449\u0435\u043d\u0438\u0435",
+  Entertainment: "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f",
+  Routine: "\u0420\u0443\u0442\u0438\u043d\u0430",
 }
-
 const GENERIC_STREAM_NAMES = new Set([
-  "Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°",
-  "Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
-  "Р В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ",
-  "Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
-  "Р В Р Р‹Р В РІР‚С™Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°",
-  "Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ",
+  "\u0440\u0430\u0431\u043e\u0442\u0430",
+  "\u043e\u0431\u0443\u0447\u0435\u043d\u0438\u0435",
+  "\u043e\u0431\u0449\u0435\u043d\u0438\u0435",
+  "\u0440\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f",
+  "\u0440\u0443\u0442\u0438\u043d\u0430",
+  "\u043a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f",
   "communication",
   "work",
   "learning",
@@ -115,7 +113,6 @@ const GENERIC_STREAM_NAMES = new Set([
   "stream",
   "task",
 ])
-
 const MAX_LLM_ITEMS = 72
 const MIN_PROJECT_ITEM_MINUTES = 8
 const MAX_PROJECTS_PER_BASE_CONTEXT = 3
@@ -165,7 +162,7 @@ export function buildLlmSummaryPayload(
       kind: "idle" as const,
       note: log.note,
       start_time: log.start_time,
-      title: log.note || "Р В Р’В Р РЋРЎСџР В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р В РІР‚В ",
+      title: log.note || "\u041f\u0435\u0440\u0435\u0440\u044b\u0432",
       url: null,
       domain: null,
       hint_flow: "Routine" as const,
@@ -274,7 +271,7 @@ function shrinkLlmItems(items: DraftLlmActivity[]) {
     return kept
   }
 
-  return [...kept, mergeMinorContexts(tail, "Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р Р‹Р Р†Р вЂљРІвЂћвЂ“")]
+  return [...kept, mergeMinorContexts(tail, "\u041f\u0440\u043e\u0447\u0438\u0435 \u043a\u043e\u0440\u043e\u0442\u043a\u0438\u0435 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442\u044b")]
 }
 
 export function stringifyLlmPayload(payload: LlmSummaryPayload) {
@@ -319,22 +316,27 @@ export async function requestOllamaSummary(
   if (payload.items.length === 0) {
     return []
   }
+
   const chunks = splitPayloadIntoChunks(payload, LLM_CHUNK_SIZE)
   const partialGroups: LlmSummaryGroup[] = []
+
   for (const chunk of chunks) {
     const groups = await requestSummaryPass(chunk, settings, buildChunkPrompt(chunk))
     partialGroups.push(...groups)
   }
+
   if (chunks.length === 1) {
     return partialGroups
   }
+
   try {
     return await requestMergePass(payload, partialGroups, settings)
   } catch (error) {
-    console.warn('LLM merge pass failed, using flattened chunk groups', error)
+    console.warn("LLM merge pass failed, using flattened chunk groups", error)
     return flattenChunkGroups(payload, partialGroups)
   }
 }
+
 export function buildFlowsFromLlmGroups(
   payload: LlmSummaryPayload,
   groups: LlmSummaryGroup[],
@@ -347,8 +349,8 @@ export function buildFlowsFromLlmGroups(
   const usedIndexes = new Set<number>()
 
   for (const group of groups) {
-    const flowName = group.flow_name.trim() || "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°"
-    const streamName = group.stream_name.trim() || "Р В Р’В Р Р†Р вЂљР’ВР В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В· Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ"
+    const flowName = group.flow_name.trim() || "\u0420\u0443\u0442\u0438\u043d\u0430"
+    const streamName = group.stream_name.trim() || "\u0411\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f"
     const flow =
       flows.get(flowName) ??
       new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
@@ -376,9 +378,9 @@ export function buildFlowsFromLlmGroups(
   const missedItems = payload.items.filter((item) => !usedIndexes.has(item.index))
   if (missedItems.length > 0) {
     const flow =
-      flows.get("Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°") ??
+      flows.get("\u0420\u0443\u0442\u0438\u043d\u0430") ??
       new Map<string, { minutes: number; activities: number; details: FlowStreamActivity[] }>()
-    const stream = flow.get("Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ") ?? {
+    const stream = flow.get("\u041d\u0435 \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e") ?? {
       minutes: 0,
       activities: 0,
       details: [],
@@ -390,8 +392,8 @@ export function buildFlowsFromLlmGroups(
       stream.details.push(toFlowStreamActivity(item))
     }
 
-    flow.set("Р В Р’В Р РЋРЎС™Р В Р’В Р вЂ™Р’Вµ Р В Р Р‹Р В РІР‚С™Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚СћР В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°Р В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚Сћ", stream)
-    flows.set("Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В°", flow)
+    flow.set("\u041d\u0435 \u0440\u0430\u0441\u043f\u043e\u0437\u043d\u0430\u043d\u043e", stream)
+    flows.set("\u0420\u0443\u0442\u0438\u043d\u0430", flow)
   }
 
   return [...flows.entries()]
@@ -474,7 +476,6 @@ Input:
 ${JSON.stringify(compactItems, null, 2)}`
 }
 
-
 function buildChunkPrompt(payload: LlmSummaryPayload) {
   return `${buildLlmPrompt(payload)}
 
@@ -520,7 +521,7 @@ function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
   const groups = Array.isArray(parsed) ? parsed : pickGroupsArray(parsed)
 
   if (!groups) {
-    throw new Error("LLM Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В° Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ JSON-Р В Р’В Р РЋР’ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р В РЎвЂњР В Р Р‹Р В РЎвЂњР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В ")
+    throw new Error("LLM \u0432\u0435\u0440\u043d\u0443\u043b\u0430 \u043d\u0435 JSON-\u043c\u0430\u0441\u0441\u0438\u0432")
   }
 
   return groups
@@ -537,7 +538,7 @@ function postProcessLlmGroups(payload: LlmSummaryPayload, groups: LlmSummaryGrou
     const forcedCommunication =
       items.length > 0 && items.every((item) => item.hint_flow === "Communication")
 
-    const flow_name = forcedCommunication ? "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ" : group.flow_name
+    const flow_name = forcedCommunication ? "\u041e\u0431\u0449\u0435\u043d\u0438\u0435" : group.flow_name
     const stream_name = sanitizeStreamName(group.stream_name, flow_name, items)
 
     return {
@@ -549,6 +550,10 @@ function postProcessLlmGroups(payload: LlmSummaryPayload, groups: LlmSummaryGrou
 }
 
 function sanitizeStreamName(streamName: string, flowName: string, items: LlmSummaryItem[]) {
+  if (flowName === "\u041e\u0431\u0449\u0435\u043d\u0438\u0435") {
+    return deriveCommunicationStreamName(items)
+  }
+
   const trimmed = streamName.trim()
   const looksBroken =
     !trimmed || containsCjk(trimmed) || GENERIC_STREAM_NAMES.has(trimmed.toLowerCase())
@@ -562,6 +567,47 @@ function sanitizeStreamName(streamName: string, flowName: string, items: LlmSumm
     fallbackStreamNameByFlow(flowName)
 
   return derived
+}
+
+function deriveCommunicationStreamName(items: LlmSummaryItem[]) {
+  const labels = [...new Set(items.map((item) => communicationSourceLabel(item)).filter(Boolean))]
+
+  if (labels.length === 1) {
+    return labels[0]!
+  }
+
+  return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 \u0447\u0430\u0442\u0430\u0445"
+}
+
+function communicationSourceLabel(item: LlmSummaryItem) {
+  const app = normalizeAppName(item.app)
+  const domain = item.domain ?? ""
+
+  if (app === "telegram" || app === "telegramdesktop" || domain.includes("telegram") || domain === "t.me") {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 Telegram"
+  }
+
+  if (app === "slack" || domain.includes("slack.com")) {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 Slack"
+  }
+
+  if (app === "discord" || domain.includes("discord")) {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 Discord"
+  }
+
+  if (app === "whatsapp" || domain.includes("whatsapp")) {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 WhatsApp"
+  }
+
+  if (app === "max" || app === "maxmessenger" || domain.includes("max.ru")) {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 MAX"
+  }
+
+  if (app === "yandexmessenger" || app === "yamb" || domain.includes("messenger.yandex.ru")) {
+    return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 \u042f\u043d\u0434\u0435\u043a\u0441 \u041c\u0435\u0441\u0441\u0435\u043d\u0434\u0436\u0435\u0440\u0435"
+  }
+
+  return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 \u0447\u0430\u0442\u0430\u0445"
 }
 
 function deriveStreamNameFromItems(items: LlmSummaryItem[]) {
@@ -589,7 +635,7 @@ function pickMeaningfulLabel(value: string | null | undefined) {
   }
 
   const parts = value
-    .split(/\s+[Р В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎСљР В Р вЂ Р В РІР‚С™Р Р†Р вЂљРЎС™|-]\s+|\s+\|\s+|\s+Р В РІР‚в„ўР вЂ™Р’В·\s+/)
+    .split(/\s+[РІР‚вЂќРІР‚вЂњ|-]\s+|\s+\|\s+|\s+Р’В·\s+/)
     .map((part) => part.trim())
     .filter(Boolean)
 
@@ -604,16 +650,16 @@ function pickMeaningfulLabel(value: string | null | undefined) {
 
 function fallbackStreamNameByFlow(flowName: string) {
   switch (flowName) {
-    case "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°":
-      return "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В±Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
-    case "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ":
-      return "Р В Р’В Р В РІвЂљВ¬Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В±Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
-    case "Р В Р’В Р РЋРІР‚С”Р В Р’В Р вЂ™Р’В±Р В Р Р‹Р Р†Р вЂљР’В°Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ":
-      return "Р В Р’В Р РЋРІвЂћСћР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В  Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В¦"
-    case "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р вЂ™Р’ВµР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ":
-      return "Р В Р’В Р вЂ™Р’В Р В Р’В Р вЂ™Р’В°Р В Р’В Р вЂ™Р’В·Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р вЂ™Р’В»Р В Р Р‹Р В Р вЂ°Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р Р†РІР‚С›РІР‚вЂњ Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р вЂ™Р’ВµР В Р’В Р РЋРІР‚СњР В Р Р‹Р В РЎвЂњР В Р Р‹Р Р†Р вЂљРЎв„ў"
+    case "\u0420\u0430\u0431\u043e\u0442\u0430":
+      return "\u0420\u0430\u0431\u043e\u0447\u0438\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
+    case "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435":
+      return "\u0423\u0447\u0435\u0431\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
+    case "\u041e\u0431\u0449\u0435\u043d\u0438\u0435":
+      return "\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 \u0447\u0430\u0442\u0430\u0445"
+    case "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f":
+      return "\u0420\u0430\u0437\u0432\u043b\u0435\u043a\u0430\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u043a\u043e\u043d\u0442\u0435\u043a\u0441\u0442"
     default:
-      return "Р В Р’В Р вЂ™Р’В Р В Р Р‹Р РЋРІР‚СљР В Р Р‹Р Р†Р вЂљРЎв„ўР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦Р В Р’В Р В РІР‚В¦Р В Р Р‹Р Р†Р вЂљРІвЂћвЂ“Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р вЂ™Р’В·Р В Р’В Р вЂ™Р’В°Р В Р’В Р СћРІР‚ВР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚В"
+      return "\u0420\u0443\u0442\u0438\u043d\u043d\u044b\u0435 \u0437\u0430\u0434\u0430\u0447\u0438"
   }
 }
 
@@ -670,7 +716,7 @@ function extractJson(value: string) {
     return trimmed.slice(objectStart, objectEnd + 1)
   }
 
-  throw new Error("LLM Р В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’Вµ Р В Р’В Р В РІР‚В Р В Р’В Р вЂ™Р’ВµР В Р Р‹Р В РІР‚С™Р В Р’В Р В РІР‚В¦Р В Р Р‹Р РЋРІР‚СљР В Р’В Р вЂ™Р’В»Р В Р’В Р вЂ™Р’В° JSON Р В Р Р‹Р В РЎвЂњ Р В Р’В Р РЋРІР‚вЂњР В Р Р‹Р В РІР‚С™Р В Р Р‹Р РЋРІР‚СљР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚вЂќР В Р’В Р РЋРІР‚ВР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р’В Р В РІР‚В Р В Р’В Р РЋРІР‚СњР В Р’В Р РЋРІР‚СћР В Р’В Р Р†РІР‚С›РІР‚вЂњ")
+  throw new Error("LLM \u0432\u0435\u0440\u043d\u0443\u043b\u0430 \u043d\u0435 JSON-\u043c\u0430\u0441\u0441\u0438\u0432")
 }
 
 function splitPayloadIntoChunks(payload: LlmSummaryPayload, chunkSize: number) {
@@ -719,7 +765,7 @@ async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) 
         format: LLM_RESPONSE_SCHEMA,
       }),
       LLM_REQUEST_TIMEOUT_MS,
-      "Ollama СЃР»РёС€РєРѕРј РґРѕР»РіРѕ РЅРµ РѕС‚РІРµС‡Р°РµС‚",
+      "Ollama \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043e\u043b\u0433\u043e \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0435\u0442",
     )
   } else {
     const response = await withTimeout(
@@ -739,7 +785,7 @@ async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) 
         }),
       }),
       LLM_REQUEST_TIMEOUT_MS,
-      "Ollama СЃР»РёС€РєРѕРј РґРѕР»РіРѕ РЅРµ РѕС‚РІРµС‡Р°РµС‚",
+      "Ollama \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043e\u043b\u0433\u043e \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0435\u0442",
     )
 
     if (!response.ok) {
@@ -841,19 +887,19 @@ function formatMinutes(totalMinutes: number) {
   const minutes = rounded % 60
 
   if (hours === 0) {
-    return `${minutes} Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦`
+    return `${minutes} \u043c\u0438\u043d`
   }
 
   if (minutes === 0) {
-    return `${hours} Р В Р Р‹Р Р†Р вЂљР Р‹`
+    return `${hours} \u0447`
   }
 
-  return `${hours} Р В Р Р‹Р Р†Р вЂљР Р‹ ${minutes} Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦`
+  return `${hours} \u0447 ${minutes} \u043c\u0438\u043d`
 }
 
 function parseDurationText(value: string) {
-  const hoursMatch = value.match(/(\d+)\s*Р В Р Р‹Р Р†Р вЂљР Р‹/u)
-  const minutesMatch = value.match(/(\d+)\s*Р В Р’В Р РЋР’ВР В Р’В Р РЋРІР‚ВР В Р’В Р В РІР‚В¦/u)
+  const hoursMatch = value.match(/(\d+)\s*\u0447/u)
+  const minutesMatch = value.match(/(\d+)\s*\u043c\u0438\u043d/u)
   return Number(hoursMatch?.[1] ?? 0) * 60 + Number(minutesMatch?.[1] ?? 0)
 }
 
@@ -940,12 +986,12 @@ function mergeMinorContexts(items: DraftLlmActivity[], explicitTitle?: string): 
 
 function buildMergedTitle(item: DraftLlmActivity) {
   if (item.hint_flow === "Communication") {
-    return `Р В Р’В Р РЋРІвЂћСћР В Р’В Р РЋРІР‚СћР В Р’В Р РЋР’ВР В Р’В Р РЋР’ВР В Р Р‹Р РЋРІР‚СљР В Р’В Р В РІР‚В¦Р В Р’В Р РЋРІР‚ВР В Р’В Р РЋРІР‚СњР В Р’В Р вЂ™Р’В°Р В Р Р‹Р Р†Р вЂљР’В Р В Р’В Р РЋРІР‚ВР В Р Р‹Р В Р РЏ Р В Р’В Р В РІР‚В  ${item.app.replace(/\.exe$/i, "")}`
+    return `\u041a\u043e\u043c\u043c\u0443\u043d\u0438\u043a\u0430\u0446\u0438\u044f \u0432 ${item.app.replace(/\.exe$/i, "")}`
   }
 
   return item.domain
-    ? `Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В° ${item.domain}`
-    : `Р В Р’В Р РЋРЎСџР В Р Р‹Р В РІР‚С™Р В Р’В Р РЋРІР‚СћР В Р Р‹Р Р†Р вЂљР Р‹Р В Р’В Р РЋРІР‚ВР В Р’В Р вЂ™Р’Вµ Р В Р’В Р РЋРІР‚СћР В Р’В Р РЋРІР‚СњР В Р’В Р В РІР‚В¦Р В Р’В Р вЂ™Р’В° ${item.app.replace(/\.exe$/i, "")}`
+    ? `\u041f\u0440\u043e\u0447\u0438\u0435 \u043e\u043a\u043d\u0430 ${item.domain}`
+    : `\u041f\u0440\u043e\u0447\u0438\u0435 \u043e\u043a\u043d\u0430 ${item.app.replace(/\.exe$/i, "")}`
 }
 
 function slugify(value: string) {
