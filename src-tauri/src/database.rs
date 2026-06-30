@@ -1,9 +1,37 @@
+use crate::messages::{service_error, ERROR_DATABASE_LOCKED, ERROR_UNSUPPORTED_EXPORT_FORMAT};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{AppHandle, Manager};
+
+const SETTING_LANGUAGE: &str = "language";
+const SETTING_THEME: &str = "theme";
+const SETTING_AUTOSTART: &str = "autostart";
+const SETTING_LLM_PROVIDER: &str = "llm_provider";
+const SETTING_OLLAMA_URL: &str = "ollama_url";
+const SETTING_LLM_MODEL: &str = "llm_model";
+const SETTING_EXPORT_FORMAT: &str = "export_format";
+
+const DEFAULT_LANGUAGE: &str = "Русский";
+const DEFAULT_THEME: &str = "Системная";
+const DEFAULT_AUTOSTART: &str = "Выключен";
+const DEFAULT_LLM_PROVIDER: &str = "ollama";
+const DEFAULT_OLLAMA_URL: &str = "http://localhost:11434";
+const DEFAULT_LLM_MODEL: &str = "qwen2.5:7b-instruct";
+const DEFAULT_EXPORT_FORMAT: &str = "JSON";
+const LEGACY_LLM_MODEL_GPT_OSS: &str = "gpt-oss:20b";
+
+const DEFAULT_SETTINGS: [(&str, &str); 7] = [
+    (SETTING_LANGUAGE, DEFAULT_LANGUAGE),
+    (SETTING_THEME, DEFAULT_THEME),
+    (SETTING_AUTOSTART, DEFAULT_AUTOSTART),
+    (SETTING_LLM_PROVIDER, DEFAULT_LLM_PROVIDER),
+    (SETTING_OLLAMA_URL, DEFAULT_OLLAMA_URL),
+    (SETTING_LLM_MODEL, DEFAULT_LLM_MODEL),
+    (SETTING_EXPORT_FORMAT, DEFAULT_EXPORT_FORMAT),
+];
 
 pub struct Database {
     connection: Mutex<Connection>,
@@ -77,6 +105,23 @@ pub struct LlmSummary {
     pub created_at: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct FocusFlowExport {
+    pub app_name: String,
+    pub schema_version: i64,
+    pub exported_at: String,
+    pub data: FocusFlowExportData,
+}
+
+#[derive(Debug, Serialize)]
+pub struct FocusFlowExportData {
+    pub activity_logs: Vec<ActivityLog>,
+    pub idle_logs: Vec<IdleLog>,
+    pub settings: Vec<SettingEntry>,
+    pub stoplist: Vec<StoplistItem>,
+    pub llm_summaries: Vec<LlmSummary>,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct NewStoplistItem {
     pub item_type: String,
@@ -97,11 +142,11 @@ impl Database {
         let db_path = database_path(app)?;
         if let Some(parent) = db_path.parent() {
             fs::create_dir_all(parent)
-                .map_err(|error| format!("Не удалось создать папку данных: {error}"))?;
+                .map_err(|error| service_error("Не удалось создать папку данных", error))?;
         }
 
         let connection = Connection::open(db_path)
-            .map_err(|error| format!("Не удалось открыть SQLite: {error}"))?;
+            .map_err(|error| service_error("Не удалось открыть SQLite", error))?;
         run_migrations(&connection)?;
 
         Ok(Self {
@@ -116,7 +161,7 @@ impl Database {
         let connection = self
             .connection
             .lock()
-            .map_err(|_| "Соединение с базой данных заблокировано".to_string())?;
+            .map_err(|_| ERROR_DATABASE_LOCKED.to_string())?;
 
         action(&connection)
     }
@@ -164,31 +209,7 @@ impl Database {
 
 #[tauri::command]
 pub fn get_activity_logs(database: tauri::State<Database>) -> Result<Vec<ActivityLog>, String> {
-    database.with_connection(|connection| {
-        let mut statement = connection
-            .prepare(
-                "SELECT id, start_time, end_time, app_name, window_title, url
-                 FROM activity_log
-                 ORDER BY start_time DESC",
-            )
-            .map_err(|error| error.to_string())?;
-
-        let rows = statement
-            .query_map([], |row| {
-                Ok(ActivityLog {
-                    id: row.get(0)?,
-                    start_time: row.get(1)?,
-                    end_time: row.get(2)?,
-                    app_name: row.get(3)?,
-                    window_title: row.get(4)?,
-                    url: row.get(5)?,
-                })
-            })
-            .map_err(|error| error.to_string())?;
-
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())
-    })
+    database.with_connection(read_activity_logs)
 }
 
 #[tauri::command]
@@ -201,31 +222,7 @@ pub fn create_activity_log(
 
 #[tauri::command]
 pub fn get_idle_logs(database: tauri::State<Database>) -> Result<Vec<IdleLog>, String> {
-    database.with_connection(|connection| {
-        let mut statement = connection
-            .prepare(
-                "SELECT id, start_time, end_time, note, ignored, reviewed
-                 FROM idle_log
-                 ORDER BY start_time DESC",
-            )
-            .map_err(|error| error.to_string())?;
-
-        let rows = statement
-            .query_map([], |row| {
-                Ok(IdleLog {
-                    id: row.get(0)?,
-                    start_time: row.get(1)?,
-                    end_time: row.get(2)?,
-                    note: row.get(3)?,
-                    ignored: row.get(4)?,
-                    reviewed: row.get(5)?,
-                })
-            })
-            .map_err(|error| error.to_string())?;
-
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())
-    })
+    database.with_connection(read_idle_logs)
 }
 
 #[tauri::command]
@@ -258,23 +255,7 @@ pub fn update_idle_log(
 
 #[tauri::command]
 pub fn get_settings(database: tauri::State<Database>) -> Result<Vec<SettingEntry>, String> {
-    database.with_connection(|connection| {
-        let mut statement = connection
-            .prepare("SELECT key, value FROM settings ORDER BY key ASC")
-            .map_err(|error| error.to_string())?;
-
-        let rows = statement
-            .query_map([], |row| {
-                Ok(SettingEntry {
-                    key: row.get(0)?,
-                    value: row.get(1)?,
-                })
-            })
-            .map_err(|error| error.to_string())?;
-
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())
-    })
+    database.with_connection(read_settings)
 }
 
 #[tauri::command]
@@ -410,39 +391,79 @@ pub fn save_llm_summary(
 
 #[tauri::command]
 pub fn get_llm_summaries(database: tauri::State<Database>) -> Result<Vec<LlmSummary>, String> {
-    database.with_connection(|connection| {
-        let mut statement = connection
-            .prepare(
-                "SELECT id, date_key, payload_signature, provider, model, groups_json, created_at
-                 FROM llm_summary
-                 ORDER BY created_at DESC",
-            )
-            .map_err(|error| error.to_string())?;
+    database.with_connection(read_llm_summaries)
+}
 
-        let rows = statement
-            .query_map([], |row| {
-                Ok(LlmSummary {
-                    id: row.get(0)?,
-                    date_key: row.get(1)?,
-                    payload_signature: row.get(2)?,
-                    provider: row.get(3)?,
-                    model: row.get(4)?,
-                    groups_json: row.get(5)?,
-                    created_at: row.get(6)?,
-                })
-            })
-            .map_err(|error| error.to_string())?;
+#[tauri::command]
+pub fn export_focusflow_data(
+    app: AppHandle,
+    database: tauri::State<Database>,
+    format: String,
+) -> Result<String, String> {
+    let export = database.with_connection(|connection| {
+        Ok(FocusFlowExport {
+            app_name: "FocusFlow".to_string(),
+            schema_version: 1,
+            exported_at: chrono::Utc::now().to_rfc3339(),
+            data: FocusFlowExportData {
+                activity_logs: read_activity_logs(connection)?,
+                idle_logs: read_idle_logs(connection)?,
+                settings: read_settings(connection)?,
+                stoplist: read_stoplist(connection)?,
+                llm_summaries: read_llm_summaries(connection)?,
+            },
+        })
+    })?;
 
-        rows.collect::<Result<Vec<_>, _>>()
-            .map_err(|error| error.to_string())
-    })
+    let normalized_format = format.trim().to_ascii_lowercase();
+    let extension = match normalized_format.as_str() {
+        "json" => "json",
+        "csv" => "csv",
+        _ => return Err(ERROR_UNSUPPORTED_EXPORT_FORMAT.to_string()),
+    };
+
+    let export_dir = export_path(&app)?;
+    fs::create_dir_all(&export_dir)
+        .map_err(|error| service_error("Не удалось создать папку экспорта", error))?;
+
+    let file_name = format!(
+        "focusflow-export-{}.{}",
+        chrono::Local::now().format("%Y-%m-%d-%H%M%S"),
+        extension
+    );
+    let file_path = export_dir.join(file_name);
+    let content = if extension == "json" {
+        serde_json::to_string_pretty(&export)
+            .map_err(|error| service_error("Не удалось подготовить JSON-экспорт", error))?
+    } else {
+        build_export_csv(&export)
+    };
+
+    fs::write(&file_path, content)
+        .map_err(|error| service_error("Не удалось сохранить экспорт", error))?;
+
+    Ok(file_path.display().to_string())
 }
 
 fn database_path(app: &AppHandle) -> Result<PathBuf, String> {
     app.path()
         .app_data_dir()
         .map(|path| path.join("focusflow.sqlite3"))
-        .map_err(|error| format!("Не удалось определить папку данных приложения: {error}"))
+        .map_err(|error| service_error("Не удалось определить папку данных приложения", error))
+}
+
+fn export_path(app: &AppHandle) -> Result<PathBuf, String> {
+    if let Ok(path) = app.path().download_dir() {
+        return Ok(path);
+    }
+
+    if let Ok(path) = app.path().document_dir() {
+        return Ok(path);
+    }
+
+    app.path()
+        .app_data_dir()
+        .map_err(|error| service_error("Не удалось определить папку для экспорта", error))
 }
 
 fn run_migrations(connection: &Connection) -> Result<(), String> {
@@ -488,22 +509,12 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
                 created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(date_key, payload_signature, provider, model)
             );
-
-            INSERT OR IGNORE INTO settings (key, value) VALUES
-                ('language', 'Русский'),
-                ('theme', 'Системная'),
-                ('autostart', 'Выключен'),
-                ('llm_provider', 'ollama'),
-                ('ollama_url', 'http://localhost:11434'),
-                ('llm_model', 'qwen2.5:7b-instruct'),
-                ('export_format', 'JSON');
-
-            UPDATE settings
-            SET value = 'qwen2.5:7b-instruct'
-            WHERE key = 'llm_model' AND value = 'gpt-oss:20b';
             ",
         )
-        .map_err(|error| format!("Не удалось применить миграции SQLite: {error}"))?;
+        .map_err(|error| service_error("Не удалось применить миграции SQLite", error))?;
+
+    seed_default_settings(connection)?;
+    migrate_legacy_setting_values(connection)?;
 
     ensure_column(
         connection,
@@ -511,6 +522,34 @@ fn run_migrations(connection: &Connection) -> Result<(), String> {
         "reviewed",
         "ALTER TABLE idle_log ADD COLUMN reviewed INTEGER NOT NULL DEFAULT 0",
     )
+}
+
+fn seed_default_settings(connection: &Connection) -> Result<(), String> {
+    for (key, value) in DEFAULT_SETTINGS {
+        connection
+            .execute(
+                "INSERT OR IGNORE INTO settings (key, value) VALUES (?1, ?2)",
+                params![key, value],
+            )
+            .map_err(|error| service_error(&format!("Не удалось записать дефолт настройки {key}"), error))?;
+    }
+
+    Ok(())
+}
+
+fn migrate_legacy_setting_values(connection: &Connection) -> Result<(), String> {
+    connection
+        .execute(
+            "UPDATE settings SET value = ?1 WHERE key = ?2 AND value = ?3",
+            params![
+                DEFAULT_LLM_MODEL,
+                SETTING_LLM_MODEL,
+                LEGACY_LLM_MODEL_GPT_OSS
+            ],
+        )
+        .map_err(|error| service_error("Не удалось обновить legacy-настройки", error))?;
+
+    Ok(())
 }
 
 fn get_activity_log_by_id(connection: &Connection, id: i64) -> Result<ActivityLog, String> {
@@ -646,4 +685,157 @@ fn get_stoplist_item_by_id(connection: &Connection, id: i64) -> Result<StoplistI
             },
         )
         .map_err(|error| error.to_string())
+}
+
+fn read_activity_logs(connection: &Connection) -> Result<Vec<ActivityLog>, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT id, start_time, end_time, app_name, window_title, url
+             FROM activity_log
+             ORDER BY start_time DESC",
+        )
+        .map_err(|error| error.to_string())?;
+
+    let rows = statement
+        .query_map([], |row| {
+            Ok(ActivityLog {
+                id: row.get(0)?,
+                start_time: row.get(1)?,
+                end_time: row.get(2)?,
+                app_name: row.get(3)?,
+                window_title: row.get(4)?,
+                url: row.get(5)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+fn read_idle_logs(connection: &Connection) -> Result<Vec<IdleLog>, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT id, start_time, end_time, note, ignored, reviewed
+             FROM idle_log
+             ORDER BY start_time DESC",
+        )
+        .map_err(|error| error.to_string())?;
+
+    let rows = statement
+        .query_map([], |row| {
+            Ok(IdleLog {
+                id: row.get(0)?,
+                start_time: row.get(1)?,
+                end_time: row.get(2)?,
+                note: row.get(3)?,
+                ignored: row.get(4)?,
+                reviewed: row.get(5)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+fn read_settings(connection: &Connection) -> Result<Vec<SettingEntry>, String> {
+    let mut statement = connection
+        .prepare("SELECT key, value FROM settings ORDER BY key ASC")
+        .map_err(|error| error.to_string())?;
+
+    let rows = statement
+        .query_map([], |row| {
+            Ok(SettingEntry {
+                key: row.get(0)?,
+                value: row.get(1)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+fn read_llm_summaries(connection: &Connection) -> Result<Vec<LlmSummary>, String> {
+    let mut statement = connection
+        .prepare(
+            "SELECT id, date_key, payload_signature, provider, model, groups_json, created_at
+             FROM llm_summary
+             ORDER BY created_at DESC",
+        )
+        .map_err(|error| error.to_string())?;
+
+    let rows = statement
+        .query_map([], |row| {
+            Ok(LlmSummary {
+                id: row.get(0)?,
+                date_key: row.get(1)?,
+                payload_signature: row.get(2)?,
+                provider: row.get(3)?,
+                model: row.get(4)?,
+                groups_json: row.get(5)?,
+                created_at: row.get(6)?,
+            })
+        })
+        .map_err(|error| error.to_string())?;
+
+    rows.collect::<Result<Vec<_>, _>>()
+        .map_err(|error| error.to_string())
+}
+
+fn build_export_csv(export: &FocusFlowExport) -> String {
+    let mut rows = vec![[
+        "kind",
+        "start_time",
+        "end_time",
+        "app_name",
+        "window_title",
+        "url",
+        "note",
+        "ignored",
+        "reviewed",
+    ]
+    .join(",")];
+
+    rows.extend(export.data.activity_logs.iter().map(|item| {
+        [
+            "activity".to_string(),
+            escape_csv(&item.start_time),
+            escape_csv(&item.end_time),
+            escape_csv(&item.app_name),
+            escape_csv(item.window_title.as_deref().unwrap_or_default()),
+            escape_csv(item.url.as_deref().unwrap_or_default()),
+            String::new(),
+            String::new(),
+            String::new(),
+        ]
+        .join(",")
+    }));
+
+    rows.extend(export.data.idle_logs.iter().map(|item| {
+        [
+            "idle".to_string(),
+            escape_csv(&item.start_time),
+            escape_csv(&item.end_time),
+            String::new(),
+            String::new(),
+            String::new(),
+            escape_csv(item.note.as_deref().unwrap_or_default()),
+            item.ignored.to_string(),
+            item.reviewed.to_string(),
+        ]
+        .join(",")
+    }));
+
+    rows.join("\n")
+}
+
+fn escape_csv(value: &str) -> String {
+    let normalized = value.replace('"', "\"\"");
+    if normalized.contains(',') || normalized.contains('\n') || normalized.contains('"') {
+        format!("\"{normalized}\"")
+    } else {
+        normalized
+    }
 }

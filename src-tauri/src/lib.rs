@@ -1,6 +1,7 @@
 mod autostart;
 mod browser_bridge;
 mod database;
+mod messages;
 mod ollama;
 mod tracker;
 
@@ -122,6 +123,7 @@ pub fn run() {
             database::get_llm_summary,
             database::save_llm_summary,
             database::get_llm_summaries,
+            database::export_focusflow_data,
             ollama::request_ollama_generate,
             tracker::start_tracking,
             tracker::stop_tracking,

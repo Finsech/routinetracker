@@ -1,5 +1,6 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import type {
+  FlowId,
   FlowSummary,
   HeatmapCell,
   HeatmapMonthLabel,
@@ -7,14 +8,22 @@ import type {
   WeekActivity,
   WeekTimelineDay,
 } from "@/types"
+import { FLOW_LABELS } from "@/lib/copy/ru"
 
 const DAY_LABELS = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"]
 const WEEKDAY_SHORT = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
-const RAW_FLOW_NAME = "Сырые активности"
-const IDLE_FLOW_NAME = "Простой"
-const FLOW_ACCENTS: Record<string, string> = {
-  [RAW_FLOW_NAME]: "#6EA88F",
-  [IDLE_FLOW_NAME]: "#D9A66C",
+const RAW_FLOW_ID: FlowId = "raw"
+const IDLE_FLOW_ID: FlowId = "idle"
+const RAW_FLOW_NAME = FLOW_LABELS[RAW_FLOW_ID]
+const IDLE_FLOW_NAME = FLOW_LABELS[IDLE_FLOW_ID]
+const FLOW_ACCENTS: Record<FlowId, string> = {
+  raw: "#6EA88F",
+  idle: "#D9A66C",
+  work: "#22C55E",
+  learning: "#38BDF8",
+  communication: "#A855F7",
+  entertainment: "#F97316",
+  misc: "#F59E0B",
 }
 const CONTEXT_ACCENT_PALETTE = [
   "#6EA88F",
@@ -157,9 +166,10 @@ function buildAppFlows(logs: ActivityLogRecord[]): FlowSummary[] {
 
   return [
     {
+      id: RAW_FLOW_ID,
       name: RAW_FLOW_NAME,
       time: formatMinutes(logs.reduce((sum, log) => sum + durationMinutes(log), 0)),
-      accent: FLOW_ACCENTS[RAW_FLOW_NAME],
+      accent: FLOW_ACCENTS[RAW_FLOW_ID],
       streams,
     },
   ]
@@ -276,6 +286,7 @@ function toTimelineItem(log: ActivityLogRecord): TimelineItem {
     end: formatClock(log.end_time),
     label: log.window_title || log.url || log.app_name,
     app: log.app_name,
+    flowId: RAW_FLOW_ID,
     flow: RAW_FLOW_NAME,
     accent,
     durationMinutes: minutes,
@@ -294,8 +305,9 @@ function toIdleTimelineItem(log: IdleLogRecord): TimelineItem {
     end: formatClock(log.end_time),
     label: log.note || IDLE_FLOW_NAME,
     app: "Idle",
+    flowId: IDLE_FLOW_ID,
     flow: IDLE_FLOW_NAME,
-    accent: FLOW_ACCENTS[IDLE_FLOW_NAME],
+    accent: FLOW_ACCENTS[IDLE_FLOW_ID],
     durationMinutes: minutes,
     startMinutes: minutesSinceMidnight(log.start_time),
     endMinutes: minutesSinceMidnight(log.end_time),
@@ -337,7 +349,7 @@ function stableAccentForKey(key: string) {
     hash = (hash * 31 + character.charCodeAt(0)) >>> 0
   }
 
-  return CONTEXT_ACCENT_PALETTE[hash % CONTEXT_ACCENT_PALETTE.length] ?? FLOW_ACCENTS[RAW_FLOW_NAME]
+  return CONTEXT_ACCENT_PALETTE[hash % CONTEXT_ACCENT_PALETTE.length] ?? FLOW_ACCENTS[RAW_FLOW_ID]
 }
 
 function toFlowStreamActivity(log: ActivityLogRecord) {

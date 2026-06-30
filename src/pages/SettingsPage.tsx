@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button"
 import { settingsRows } from "@/data/mock"
 import {
   addStoplistItem,
-  exportFocusFlowData,
+  saveFocusFlowExport,
+  type ExportFormat,
   getAutostartStatus,
   getBrowserBridgeStatus,
   getSettings,
@@ -23,19 +24,15 @@ import {
   readLlmSettings,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
-import type { SettingRow } from "@/types"
+import { UI_ERROR_COPY } from "@/lib/copy/errors"
+import { SETTING_LABELS, SETTINGS_NOTES } from "@/lib/copy/ru"
+import {
+  AUTOSTART_SETTING_VALUE,
+  getSettingDisplayValue,
+} from "@/lib/settings-contract"
+import type { SettingKey, SettingRow } from "@/types"
 
-const settingLabels: Record<string, string> = {
-  language: "Язык",
-  theme: "Тема",
-  autostart: "Автозапуск",
-  llm_provider: "LLM-провайдер",
-  ollama_url: "Ollama",
-  llm_model: "LLM-модель",
-  export_format: "Экспорт",
-}
-
-const llmSettingLabels = new Set(["LLM-провайдер", "Ollama", "LLM-модель"])
+const hiddenSettingKeys = new Set<SettingKey>(["llm_provider", "ollama_url", "llm_model", "export_format"])
 
 export function SettingsPage() {
   const [rows, setRows] = useState<SettingRow[]>(settingsRows)
@@ -46,12 +43,13 @@ export function SettingsPage() {
   const [error, setError] = useState<string | null>(null)
   const [savingLlm, setSavingLlm] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [exportMessage, setExportMessage] = useState<string | null>(null)
   const [browserBridgeStatus, setBrowserBridgeStatus] = useState<BrowserBridgeStatusRecord | null>(
     null,
   )
   const [autostartEnabled, setAutostartEnabled] = useState(false)
   const [autostartSaving, setAutostartSaving] = useState(false)
-  const visibleRows = rows.filter((row) => !llmSettingLabels.has(row.label))
+  const visibleRows = rows.filter((row) => !hiddenSettingKeys.has(row.key))
 
   useEffect(() => {
     let isMounted = true
@@ -83,7 +81,7 @@ export function SettingsPage() {
       } catch {
         if (isMounted) {
           setRows(settingsRows)
-          setError("Не удалось загрузить настройки")
+          setError(UI_ERROR_COPY.settings.loadSettings)
         }
       }
     }
@@ -140,8 +138,8 @@ export function SettingsPage() {
     } catch {
       setError(
         stoplistType === "app"
-          ? "Не удалось добавить приложение в стоп-лист"
-          : "Не удалось добавить сайт в стоп-лист",
+          ? UI_ERROR_COPY.settings.addStoplistApp
+          : UI_ERROR_COPY.settings.addStoplistSite,
       )
     }
   }
@@ -152,7 +150,7 @@ export function SettingsPage() {
       setStoplist((current) => current.filter((item) => item.id !== id))
       setError(null)
     } catch {
-      setError("Не удалось удалить элемент из стоп-листа")
+      setError(UI_ERROR_COPY.settings.removeStoplistItem)
     }
   }
 
@@ -169,8 +167,9 @@ export function SettingsPage() {
       setRows(settings.map(mapSetting))
       setLlmSettings(readLlmSettings(settings))
       setError(null)
+      setExportMessage(null)
     } catch {
-      setError("Не удалось сохранить настройки LLM")
+      setError(UI_ERROR_COPY.settings.saveLlmSettings)
     } finally {
       setSavingLlm(false)
     }
@@ -180,15 +179,16 @@ export function SettingsPage() {
     setLlmSettings((current) => ({ ...current, ...input }))
   }
 
-  async function exportData() {
+  async function exportData(format: ExportFormat) {
     setExporting(true)
 
     try {
-      const payload = await exportFocusFlowData()
-      downloadJsonFile(payload, `focusflow-export-${new Date().toISOString().slice(0, 10)}.json`)
+      const savedPath = await saveFocusFlowExport(format)
+      setExportMessage(`Сохранено: ${savedPath}`)
       setError(null)
     } catch {
-      setError("Не удалось подготовить экспорт данных")
+      setError(UI_ERROR_COPY.settings.exportData)
+      setExportMessage(null)
     } finally {
       setExporting(false)
     }
@@ -201,17 +201,25 @@ export function SettingsPage() {
     try {
       const actualValue = await setAutostartStatus(nextValue)
       setAutostartEnabled(actualValue)
-      await setSetting("autostart", actualValue ? "Включен" : "Выключен")
+      await setSetting(
+        "autostart",
+        actualValue ? AUTOSTART_SETTING_VALUE.enabled : AUTOSTART_SETTING_VALUE.disabled,
+      )
       setRows((current) =>
         current.map((row) =>
-          row.label === "Автозапуск"
-            ? { ...row, value: actualValue ? "Включен" : "Выключен" }
+          row.key === "autostart"
+            ? {
+                ...row,
+                value:
+                  actualValue ? AUTOSTART_SETTING_VALUE.enabled : AUTOSTART_SETTING_VALUE.disabled,
+              }
             : row,
         ),
       )
       setError(null)
+      setExportMessage(null)
     } catch {
-      setError("Не удалось изменить автозапуск приложения")
+      setError(UI_ERROR_COPY.settings.changeAutostart)
     } finally {
       setAutostartSaving(false)
     }
@@ -244,39 +252,57 @@ export function SettingsPage() {
           >
             <div className="grid gap-3">
               {visibleRows.map((row) => (
-                row.label === "Автозапуск" ? (
+                row.key === "autostart" ? (
                   <AutostartMetric
                     enabled={autostartEnabled}
-                    key={row.label}
+                    key={row.key}
                     onToggle={() => void toggleAutostart()}
                     saving={autostartSaving}
                   />
                 ) : (
-                  <SettingMetric key={row.label} label={row.label} value={row.value} />
+                  <SettingMetric
+                    key={row.key}
+                    label={row.label}
+                    note={SETTINGS_NOTES[row.key]}
+                    value={row.value}
+                  />
                 )
               ))}
             </div>
           </SettingsCard>
 
           <SettingsCard
-            description="Логи, простои, настройки, стоп-лист и сохраненные LLM-сводки в одном JSON."
+            description="Для бэкапа и ручной аналитики: полный JSON-слепок или плоский CSV по активностям и простоям."
             icon={Download}
             title="Экспорт"
           >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-4">
               <p className="text-sm leading-6 text-[#71837A]">
-                Удобно для бэкапа, переноса данных и ручной проверки содержимого локальной базы.
+                JSON полезен как полный локальный бэкап. CSV удобнее для Excel, таблиц и быстрой ручной проверки трека.
               </p>
-              <Button
-                className="rounded-full px-4"
-                disabled={exporting}
-                onClick={() => void exportData()}
-                type="button"
-                variant="outline"
-              >
-                <Download className="size-4" data-icon="inline-start" />
-                {exporting ? "Готовлю" : "Скачать JSON"}
-              </Button>
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  className="rounded-full px-4"
+                  disabled={exporting}
+                  onClick={() => void exportData("json")}
+                  type="button"
+                  variant="outline"
+                >
+                  <Download className="size-4" data-icon="inline-start" />
+                  {exporting ? "Готовлю" : "Сохранить JSON"}
+                </Button>
+                <Button
+                  className="rounded-full px-4"
+                  disabled={exporting}
+                  onClick={() => void exportData("csv")}
+                  type="button"
+                  variant="outline"
+                >
+                  <Download className="size-4" data-icon="inline-start" />
+                  {exporting ? "Готовлю" : "Сохранить CSV"}
+                </Button>
+              </div>
+              {exportMessage && <p className="text-sm text-[#5D7868]">{exportMessage}</p>}
             </div>
           </SettingsCard>
         </div>
@@ -297,7 +323,7 @@ export function SettingsPage() {
             <div className="mt-3 rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
               <p className="text-sm text-[#73867A]">Последняя вкладка</p>
               <p className="mt-2 truncate text-sm font-medium text-[#2B4236]">
-                {browserBridgeStatus?.last_activity?.url ?? "Нет данных от расширения"}
+                {browserBridgeStatus?.last_activity?.url ?? "Нет данных о вкладке"}
               </p>
             </div>
           </SettingsCard>
@@ -307,6 +333,9 @@ export function SettingsPage() {
             icon={Sparkles}
             title="LLM"
           >
+            <div className="mb-4 rounded-[18px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3 text-sm text-[#73867A]">
+              Сейчас поддерживается только локальная Ollama. Внешние провайдеры по токену — в работе.
+            </div>
             <div className="grid gap-4">
               <Field label="Провайдер">
                 <select
@@ -350,7 +379,7 @@ export function SettingsPage() {
           </SettingsCard>
 
           <SettingsCard
-            description="Здесь можно исключать как процессы, так и сайты, которые не должны попадать в трекинг и browser bridge."
+            description="Здесь можно исключать как процессы, так и сайты, которые не должны попадать в трекинг и локальный URL-мост."
             icon={Workflow}
             title="Стоп-лист"
           >
@@ -467,10 +496,21 @@ function SettingsCard({
   )
 }
 
-function SettingMetric({ label, value }: { label: string; value: string }) {
+function SettingMetric({
+  label,
+  note,
+  value,
+}: {
+  label: string
+  note?: string
+  value: string
+}) {
   return (
     <div className="rounded-[20px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-3">
-      <p className="text-sm text-[#73867A]">{label}</p>
+      <div className="flex items-start justify-between gap-3">
+        <p className="text-sm text-[#73867A]">{label}</p>
+        {note && <span className="text-xs text-[#94A69B]">{note}</span>}
+      </div>
       <p className="mt-2 text-[1.02rem] font-medium text-[#2B4236]">{value}</p>
     </div>
   )
@@ -506,7 +546,7 @@ function AutostartMetric({
         <div>
           <p className="text-sm text-[#73867A]">Автозапуск</p>
           <p className="mt-2 text-[1.02rem] font-medium text-[#2B4236]">
-            {enabled ? "Включен" : "Выключен"}
+            {enabled ? AUTOSTART_SETTING_VALUE.enabled : AUTOSTART_SETTING_VALUE.disabled}
           </p>
         </div>
 
@@ -533,23 +573,11 @@ function AutostartMetric({
 }
 
 function mapSetting(setting: SettingEntryRecord): SettingRow {
+  const key = setting.key as SettingKey
+
   return {
-    label: settingLabels[setting.key] ?? setting.key,
-    value: setting.value,
+    key,
+    label: SETTING_LABELS[key] ?? setting.key,
+    value: getSettingDisplayValue(key, setting.value),
   }
-}
-
-function downloadJsonFile(payload: unknown, fileName: string) {
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {
-    type: "application/json;charset=utf-8",
-  })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement("a")
-
-  link.href = url
-  link.download = fileName
-  document.body.append(link)
-  link.click()
-  link.remove()
-  URL.revokeObjectURL(url)
 }

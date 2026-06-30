@@ -1,3 +1,4 @@
+use crate::messages::{log_service_error, ERROR_TRACKER_HANDLE, ERROR_TRACKER_THREAD};
 use crate::browser_bridge::BrowserBridge;
 use crate::database::{Database, NewActivityLog, NewIdleLog, StoplistItem};
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
@@ -51,7 +52,7 @@ impl Tracker {
         let mut handle = self
             .handle
             .lock()
-            .map_err(|_| "Не удалось получить доступ к tracker handle".to_string())?;
+            .map_err(|_| ERROR_TRACKER_HANDLE.to_string())?;
 
         if self.running.load(Ordering::SeqCst) {
             return Ok(());
@@ -75,12 +76,12 @@ impl Tracker {
         let mut handle = self
             .handle
             .lock()
-            .map_err(|_| "Не удалось получить доступ к tracker handle".to_string())?;
+            .map_err(|_| ERROR_TRACKER_HANDLE.to_string())?;
 
         if let Some(handle) = handle.take() {
             handle
                 .join()
-                .map_err(|_| "Фоновый tracker завершился с ошибкой".to_string())?;
+                .map_err(|_| ERROR_TRACKER_THREAD.to_string())?;
         }
 
         if let Ok(mut snapshot) = self.current_snapshot.lock() {
@@ -107,7 +108,7 @@ impl Tracker {
 
     fn shutdown(&self) {
         if let Err(error) = self.stop() {
-            eprintln!("Не удалось остановить tracker: {error}");
+            log_service_error("Не удалось остановить tracker", error);
         }
     }
 }
@@ -231,7 +232,7 @@ fn is_stoplisted(app: &AppHandle, snapshot: &WindowSnapshot) -> bool {
     match database.list_stoplist() {
         Ok(items) => items.iter().any(|item| stoplist_matches(item, snapshot)),
         Err(error) => {
-            eprintln!("Не удалось прочитать стоп-лист: {error}");
+            log_service_error("Не удалось прочитать стоп-лист", error);
             false
         }
     }
@@ -289,7 +290,7 @@ fn close_session_at(app: &AppHandle, session: Option<ActiveSession>, end_time: S
     });
 
     if let Err(error) = result {
-        eprintln!("Не удалось сохранить активность: {error}");
+        log_service_error("Не удалось сохранить активность", error);
     }
 }
 
@@ -317,7 +318,7 @@ fn close_idle_session(app: &AppHandle, start_time: String, end_time: String) {
     });
 
     if let Err(error) = result {
-        eprintln!("Не удалось сохранить простой: {error}");
+        log_service_error("Не удалось сохранить простой", error);
     }
 }
 

@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { NAV_LABELS } from "@/lib/copy/ru"
 import {
   getTrackingStatus,
   startTracking,
@@ -29,18 +30,11 @@ const initialTrackerStatus: TrackerStatusRecord = {
 }
 
 const navItems: NavItem[] = [
-  { id: "today", label: "Сегодня", icon: LayoutList },
-  { id: "analytics", label: "Анализ дня", icon: BarChart3 },
-  { id: "week", label: "Неделя", icon: CalendarDays },
-  { id: "settings", label: "Настройки", icon: Settings },
+  { id: "today", label: NAV_LABELS.today, icon: LayoutList },
+  { id: "analytics", label: NAV_LABELS.analytics, icon: BarChart3 },
+  { id: "week", label: NAV_LABELS.week, icon: CalendarDays },
+  { id: "settings", label: NAV_LABELS.settings, icon: Settings },
 ]
-
-const viewTitles: Record<View, string> = {
-  today: "Сегодня",
-  week: "Неделя",
-  analytics: "Анализ дня",
-  settings: "Настройки",
-}
 
 type AppShellProps = {
   activeView: View
@@ -177,7 +171,7 @@ export function AppShell({
           <header className="flex flex-wrap items-start justify-between gap-4 border-b border-[#ECE9E0] px-5 py-5 sm:px-6">
             <div>
               <p className="font-['Georgia'] text-[2.1rem] leading-none text-[#22372C]">
-                {viewTitles[activeView]}
+                {NAV_LABELS[activeView]}
               </p>
               <p className="mt-2 text-sm text-[#6E8076]">{headerDate}</p>
             </div>

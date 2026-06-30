@@ -32,6 +32,7 @@ import {
   serializeLlmGroups,
   type LlmProviderSettings,
 } from "@/lib/llm-summary"
+import { LLM_UI_COPY, UI_ERROR_COPY } from "@/lib/copy/errors"
 import type { FlowStream, FlowSummary } from "@/types"
 
 type SelectedStream = {
@@ -115,7 +116,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       setIdleLogs(nextIdleLogs)
       setError(null)
     } catch {
-      setError("Не удалось загрузить активность")
+      setError(UI_ERROR_COPY.today.loadActivity)
     } finally {
       setLoading(false)
     }
@@ -246,7 +247,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         setNextAutoSummaryAt(Date.now() + AUTO_SUMMARY_INTERVAL_MS)
       } catch {
         if (active) {
-          setLlmError("Не удалось загрузить сохраненную группировку дня")
+          setLlmError(UI_ERROR_COPY.today.loadStoredSummary)
         }
       }
     }
@@ -357,15 +358,15 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
         setLlmCachedAt(savedSummary.created_at)
         setLlmError(null)
       } catch {
-        setLlmError("Группировка получена, но не сохранилась в локальную базу")
+        setLlmError(UI_ERROR_COPY.today.summarySavedButNotPersisted)
       }
     } catch (caughtError) {
       const message =
-        caughtError instanceof Error ? caughtError.message : "Не удалось получить ответ локальной модели"
+        caughtError instanceof Error ? caughtError.message : UI_ERROR_COPY.today.localModelResponse
       setLlmError(
         mode === "auto"
-          ? `Автосборка дня пока не сработала: ${message}`
-          : `Группировка дня пока не сработала: ${message}`,
+          ? `${UI_ERROR_COPY.today.autoSummaryFailedPrefix}: ${message}`
+          : `${UI_ERROR_COPY.today.manualSummaryFailedPrefix}: ${message}`,
       )
     } finally {
       setLlmLoading(false)
@@ -388,7 +389,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
       setPostponedIdleIds((currentIds) => currentIds.filter((id) => id !== updatedLog.id))
       setIdleNote("")
     } catch {
-      setError("Не удалось сохранить уточнение простоя")
+      setError(UI_ERROR_COPY.today.saveIdleReview)
     }
   }
 
@@ -482,7 +483,11 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             ) : (
               <Sparkles className="size-4" />
             )}
-            {llmLoading ? "Собираю день" : llmCachedAt ? "Обновить группы" : "Собрать день"}
+            {llmLoading
+              ? LLM_UI_COPY.buildingDay
+              : llmCachedAt
+                ? LLM_UI_COPY.updateGroups
+                : LLM_UI_COPY.buildDay}
           </Button>
 
           {llmLoading && (
@@ -504,7 +509,7 @@ export function TodayPage({ selectedDate }: { selectedDate: Date }) {
             )}
 
             {flows.map((flow) => (
-              <article className="rounded-[22px] border border-[#E2EBE4] bg-[#FBFDFB] p-3.5" key={flow.name}>
+              <article className="rounded-[22px] border border-[#E2EBE4] bg-[#FBFDFB] p-3.5" key={flow.id}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <span className="size-2.5 rounded-full" style={{ background: flow.accent }} />
@@ -850,7 +855,7 @@ function buildFocusMetricValue(flows: FlowSummary[], activeTime: string) {
   }
 
   const focusMinutes = flows
-    .filter((flow) => flow.name === "Работа" || flow.name === "Обучение")
+    .filter((flow) => flow.id === "work" || flow.id === "learning")
     .reduce((sum, flow) => sum + parseDuration(flow.time), 0)
 
   if (focusMinutes <= 0) {

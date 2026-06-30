@@ -1,6 +1,14 @@
 import type { ActivityLogRecord, IdleLogRecord } from "@/lib/focusflow-api"
 import { requestOllamaGenerate } from "@/lib/tauri-api"
-import type { FlowStreamActivity, FlowSummary } from "@/types"
+import type { FlowId, FlowStreamActivity, FlowSummary } from "@/types"
+import {
+  buildChunkPrompt as buildLlmChunkPrompt,
+  buildMergePrompt as buildLlmMergePrompt,
+  buildSummaryPrompt as buildBaseLlmPrompt,
+  LLM_INVALID_JSON_ERROR,
+  LLM_RESPONSE_SCHEMA,
+  LLM_TIMEOUT_ERROR,
+} from "@/lib/llm/prompts"
 import {
   buildContextHints,
   isBrowserApp,
@@ -9,6 +17,8 @@ import {
   normalizeAppName,
   type FlowHint,
 } from "@/lib/context-taxonomy"
+import { FLOW_LABELS, resolveFlowIdFromLabel } from "@/lib/copy/ru"
+import { DEFAULT_SETTING_VALUES } from "@/lib/settings-contract"
 
 type TimeRangeRecord = {
   start_time: string
@@ -62,50 +72,27 @@ type OllamaGenerateResponse = {
   error?: string
 }
 
-const LLM_RESPONSE_SCHEMA = {
-  type: "object",
-  properties: {
-    tasks: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          stream_name: { type: "string" },
-          flow_name: {
-            type: "string",
-            enum: ["Work", "Learning", "Communication", "Entertainment", "Routine"],
-          },
-          activities: {
-            type: "array",
-            items: { type: "integer" },
-          },
-        },
-        required: ["stream_name", "flow_name", "activities"],
-      },
-    },
-  },
-  required: ["tasks"],
-} as const
-
 export const DEFAULT_LLM_SETTINGS: LlmProviderSettings = {
   provider: "ollama",
-  ollamaUrl: "http://localhost:11434",
-  model: "qwen2.5:7b-instruct",
+  ollamaUrl: DEFAULT_SETTING_VALUES.ollama_url,
+  model: DEFAULT_SETTING_VALUES.llm_model,
 }
 
-const FLOW_ACCENTS: Record<string, string> = {
-  "\u0420\u0430\u0431\u043e\u0442\u0430": "#22C55E",
-  "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435": "#38BDF8",
-  "\u041e\u0431\u0449\u0435\u043d\u0438\u0435": "#A855F7",
-  "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f": "#F97316",
-  "\u041f\u0440\u043e\u0447\u0435\u0435": "#F59E0B",
+const FLOW_ACCENTS: Record<FlowId, string> = {
+  work: "#22C55E",
+  learning: "#38BDF8",
+  communication: "#A855F7",
+  entertainment: "#F97316",
+  misc: "#F59E0B",
+  raw: "#6EA88F",
+  idle: "#D9A66C",
 }
 const FLOW_NAME_MAP: Record<string, string> = {
-  Work: "\u0420\u0430\u0431\u043e\u0442\u0430",
-  Learning: "\u041e\u0431\u0443\u0447\u0435\u043d\u0438\u0435",
-  Communication: "\u041e\u0431\u0449\u0435\u043d\u0438\u0435",
-  Entertainment: "\u0420\u0430\u0437\u0432\u043b\u0435\u0447\u0435\u043d\u0438\u044f",
-  Routine: "\u041f\u0440\u043e\u0447\u0435\u0435",
+  Work: FLOW_LABELS.work,
+  Learning: FLOW_LABELS.learning,
+  Communication: FLOW_LABELS.communication,
+  Entertainment: FLOW_LABELS.entertainment,
+  Routine: FLOW_LABELS.misc,
 }
 const GENERIC_STREAM_NAMES = new Set([
   "\u0440\u0430\u0431\u043e\u0442\u0430",
@@ -130,8 +117,8 @@ const MAX_PROJECTS_PER_BASE_CONTEXT = 3
 const LLM_CHUNK_SIZE = 12
 const LLM_REQUEST_TIMEOUT_MS = 240_000
 const MAX_MERGE_CANDIDATES = 18
-const OTHER_FLOW_NAME = "\u041f\u0440\u043e\u0447\u0435\u0435"
-const COMMUNICATION_FLOW_NAME = "\u041e\u0431\u0449\u0435\u043d\u0438\u0435"
+const OTHER_FLOW_NAME = FLOW_LABELS.misc
+const COMMUNICATION_FLOW_NAME = FLOW_LABELS.communication
 
 type LlmMergeCandidate = {
   stream_name: string
@@ -441,7 +428,11 @@ export async function requestOllamaSummary(
   const partialGroups: LlmSummaryGroup[] = []
 
   for (const chunk of chunks) {
-    const groups = await requestSummaryPass(chunk, settings, buildChunkPrompt(chunk))
+    const groups = await requestSummaryPass(
+      chunk,
+      settings,
+      buildLlmChunkPrompt(toPromptItems(chunk)),
+    )
     partialGroups.push(...groups)
   }
 
@@ -519,6 +510,7 @@ export function buildFlowsFromLlmGroups(
 
   return [...flows.entries()]
     .map(([flowName, streams]) => {
+      const flowId = resolveFlowIdFromLabel(flowName)
       const streamItems = [...streams.entries()]
         .map(([streamName, data]) => ({
           name: streamName,
@@ -530,9 +522,10 @@ export function buildFlowsFromLlmGroups(
       const minutes = [...streams.values()].reduce((sum, stream) => sum + stream.minutes, 0)
 
       return {
+        id: flowId,
         name: flowName,
         time: formatMinutes(minutes),
-        accent: FLOW_ACCENTS[flowName] ?? "#71717A",
+        accent: FLOW_ACCENTS[flowId] ?? "#71717A",
         streams: streamItems,
       }
     })
@@ -560,8 +553,8 @@ function toFlowStreamActivity(item: LlmSummaryItem): FlowStreamActivity {
   }
 }
 
-function buildLlmPrompt(payload: LlmSummaryPayload) {
-  const compactItems = payload.items.map((item) => ({
+function toPromptItems(payload: LlmSummaryPayload) {
+  return payload.items.map((item) => ({
     index: item.index,
     kind: item.kind,
     app: item.app,
@@ -576,72 +569,6 @@ function buildLlmPrompt(payload: LlmSummaryPayload) {
     hint_flow: item.hint_flow ?? null,
     examples: item.examples ?? [],
   }))
-
-  return `You are a productivity analyst for a Russian-language time tracker.
-
-Return only JSON that matches the provided schema. Do not use markdown. Do not explain anything.
-
-Rules:
-- Put groups into the "tasks" array.
-- "activities" must contain only numeric indexes from the input.
-- Do not leave a group with an empty "activities" array.
-- Do not invent activity indexes.
-- Use exactly one flow_name value: Work, Learning, Communication, Entertainment, Routine.
-- stream_name must be a short human-readable Russian label.
-- Never use Chinese, Japanese or Korean characters in stream_name.
-- If hint_flow is Communication, treat that activity as communication unless the input clearly proves otherwise.
-- If hint_flow is Work, treat that activity as work unless the input clearly proves otherwise.
-- Telegram, Slack, Discord, WhatsApp, MAX and Yandex Messenger contexts belong to Communication, including their web versions.
-- IDEs, design tools, project trackers, work calendars and video-call tools with hint_flow Work should stay inside Work and be grouped by project or workstream.
-- If project_hint is present, prefer it as the strongest clue for the stream name unless the examples clearly prove a better Russian project label.
-- If project_key is present, use it to keep the same project together across different apps and titles.
-- Use the examples array to infer concrete projects from document titles, Figma files, tasks, repositories, specs and browser tab names.
-- If the same project appears in several contexts, merge those activities into one stream.
-- Idle items with a note are valid user activity. Idle items without a note belong to Routine.
-
-Input:
-${JSON.stringify(compactItems, null, 2)}`
-}
-
-function buildChunkPrompt(payload: LlmSummaryPayload) {
-  return `${buildLlmPrompt(payload)}
-
-This input is only one chunk of the same day. Be precise inside the chunk and preserve project distinctions when titles/examples point to different workstreams.`
-}
-
-function buildMergePrompt(payload: LlmSummaryPayload, candidates: LlmMergeCandidate[]) {
-  return `You are merging chunk summaries for a Russian-language time tracker day.
-
-Return only JSON that matches the provided schema. Do not use markdown. Do not explain anything.
-
-Rules:
-- Put groups into the "tasks" array.
-- "activities" must contain only numeric indexes from the candidates input.
-- Do not leave a group with an empty "activities" array.
-- Do not invent activity indexes.
-- Use exactly one flow_name value: Work, Learning, Communication, Entertainment, Routine.
-- stream_name must be a short human-readable Russian label.
-- Never use Chinese, Japanese or Korean characters in stream_name.
-- Merge candidates that clearly belong to the same project or stream across chunks.
-- Keep communication contexts inside Communication unless the input clearly proves otherwise.
-- Keep candidates with clear Work evidence inside Work unless the input clearly proves otherwise.
-- If several candidates share the same project_hint or clearly describe the same project, merge them into one stream.
-- If several candidates share the same project_key, merge them into one stream.
-- Prefer concrete project labels from examples over generic app names.
-
-Day:
-${JSON.stringify(
-    {
-      date: payload.date,
-      total_active_minutes: payload.total_active_minutes,
-      candidate_count: candidates.length,
-    },
-    null,
-    2,
-  )}
-
-Candidates:
-${JSON.stringify(candidates, null, 2)}`
 }
 function parseLlmGroups(rawResponse: string): LlmSummaryGroup[] {
   const jsonText = extractJson(rawResponse)
@@ -763,7 +690,7 @@ function pickMeaningfulLabel(value: string | null | undefined) {
   }
 
   const parts = value
-    .split(/\s+[РІР‚вЂќРІР‚вЂњ|-]\s+|\s+\|\s+|\s+Р’В·\s+/)
+    .split(/\s+[—–-]\s+|\s+\|\s+|\s+·\s+/)
     .map((part) => part.trim())
     .filter(Boolean)
 
@@ -844,7 +771,7 @@ function extractJson(value: string) {
     return trimmed.slice(objectStart, objectEnd + 1)
   }
 
-  throw new Error("LLM \u0432\u0435\u0440\u043d\u0443\u043b\u0430 \u043d\u0435 JSON-\u043c\u0430\u0441\u0441\u0438\u0432")
+  throw new Error(LLM_INVALID_JSON_ERROR)
 }
 
 function splitPayloadIntoChunks(payload: LlmSummaryPayload, chunkSize: number) {
@@ -863,9 +790,12 @@ function splitPayloadIntoChunks(payload: LlmSummaryPayload, chunkSize: number) {
 async function requestSummaryPass(
   payload: LlmSummaryPayload,
   settings: LlmProviderSettings,
-  prompt: string,
+  promptOverride?: string,
 ) {
-  const data = await requestOllamaJson(settings, prompt)
+  const data = await requestOllamaJson(
+    settings,
+    promptOverride ?? buildBaseLlmPrompt(toPromptItems(payload)),
+  )
   return postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
 }
 
@@ -875,7 +805,16 @@ async function requestMergePass(
   settings: LlmProviderSettings,
 ) {
   const candidates = buildMergeCandidates(payload, chunkGroups)
-  const data = await requestOllamaJson(settings, buildMergePrompt(payload, candidates))
+  const data = await requestOllamaJson(
+    settings,
+    buildLlmMergePrompt(
+      {
+        date: payload.date,
+        total_active_minutes: payload.total_active_minutes,
+      },
+      candidates,
+    ),
+  )
   const merged = postProcessLlmGroups(payload, parseLlmGroups(data.response ?? ""))
 
   return merged.length > 0 ? merged : flattenChunkGroups(payload, chunkGroups)
@@ -893,7 +832,7 @@ async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) 
         format: LLM_RESPONSE_SCHEMA,
       }),
       LLM_REQUEST_TIMEOUT_MS,
-      "Ollama \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043e\u043b\u0433\u043e \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0435\u0442",
+      LLM_TIMEOUT_ERROR,
     )
   } else {
     const response = await withTimeout(
@@ -913,7 +852,7 @@ async function requestOllamaJson(settings: LlmProviderSettings, prompt: string) 
         }),
       }),
       LLM_REQUEST_TIMEOUT_MS,
-      "Ollama \u0441\u043b\u0438\u0448\u043a\u043e\u043c \u0434\u043e\u043b\u0433\u043e \u043d\u0435 \u043e\u0442\u0432\u0435\u0447\u0430\u0435\u0442",
+      LLM_TIMEOUT_ERROR,
     )
 
     if (!response.ok) {

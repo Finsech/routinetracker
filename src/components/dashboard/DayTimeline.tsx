@@ -98,7 +98,7 @@ export function DayTimeline({
         {flows.map((flow) => (
           <div
             className="inline-flex items-center gap-2 rounded-full border border-[#DDE9E0] bg-white px-3 py-1 text-[13px] text-[#31483A]"
-            key={flow.name}
+            key={flow.id}
           >
             <span className="size-2.5 rounded-full" style={{ backgroundColor: flow.accent }} />
             <span>{flow.name}</span>

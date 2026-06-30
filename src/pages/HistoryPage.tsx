@@ -3,6 +3,7 @@ import { CalendarRange, Clock3 } from "lucide-react"
 
 import { StateCard } from "@/components/app/StateCard"
 import { Heatmap } from "@/components/dashboard/Heatmap"
+import { UI_ERROR_COPY } from "@/lib/copy/errors"
 import {
   WeekTimeline,
   buildWeekTimelineDayBar,
@@ -42,7 +43,7 @@ export function HistoryPage({ selectedDate }: { selectedDate: Date }) {
         setError(null)
       } catch {
         if (active) {
-          setError("Не удалось загрузить недельную историю")
+          setError(UI_ERROR_COPY.history.loadWeek)
         }
       } finally {
         if (active) {

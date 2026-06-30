@@ -2,6 +2,24 @@ import type { LucideIcon } from "lucide-react"
 
 export type View = "today" | "week" | "analytics" | "settings"
 
+export type FlowId =
+  | "raw"
+  | "idle"
+  | "work"
+  | "learning"
+  | "communication"
+  | "entertainment"
+  | "misc"
+
+export type SettingKey =
+  | "language"
+  | "theme"
+  | "autostart"
+  | "llm_provider"
+  | "ollama_url"
+  | "llm_model"
+  | "export_format"
+
 export type NavItem = {
   id: View
   label: string
@@ -24,6 +42,7 @@ export type FlowStreamActivity = {
 }
 
 export type FlowSummary = {
+  id: FlowId
   name: string
   time: string
   accent: string
@@ -35,6 +54,7 @@ export type TimelineItem = {
   end: string
   label: string
   app: string
+  flowId: FlowId
   flow: string
   accent: string
   durationMinutes: number
@@ -50,6 +70,7 @@ export type WeekActivity = {
 }
 
 export type SettingRow = {
+  key: SettingKey
   label: string
   value: string
 }

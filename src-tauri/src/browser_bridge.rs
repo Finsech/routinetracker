@@ -1,3 +1,6 @@
+use crate::messages::{
+    log_service_error, service_error, ERROR_BROWSER_BRIDGE_HANDLE, ERROR_BROWSER_BRIDGE_THREAD,
+};
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
@@ -53,17 +56,17 @@ impl BrowserBridge {
         let mut handle = self
             .handle
             .lock()
-            .map_err(|_| "Не удалось получить доступ к browser bridge handle".to_string())?;
+            .map_err(|_| ERROR_BROWSER_BRIDGE_HANDLE.to_string())?;
 
         if self.running.load(Ordering::SeqCst) {
             return Ok(());
         }
 
         let listener = TcpListener::bind(("127.0.0.1", BROWSER_BRIDGE_PORT))
-            .map_err(|error| format!("Не удалось запустить browser bridge: {error}"))?;
+            .map_err(|error| service_error("Не удалось запустить browser bridge", error))?;
         listener
             .set_nonblocking(true)
-            .map_err(|error| format!("Не удалось настроить browser bridge: {error}"))?;
+            .map_err(|error| service_error("Не удалось настроить browser bridge", error))?;
 
         self.running.store(true, Ordering::SeqCst);
 
@@ -82,12 +85,12 @@ impl BrowserBridge {
         let mut handle = self
             .handle
             .lock()
-            .map_err(|_| "Не удалось получить доступ к browser bridge handle".to_string())?;
+            .map_err(|_| ERROR_BROWSER_BRIDGE_HANDLE.to_string())?;
 
         if let Some(handle) = handle.take() {
             handle
                 .join()
-                .map_err(|_| "Browser bridge завершился с ошибкой".to_string())?;
+                .map_err(|_| ERROR_BROWSER_BRIDGE_THREAD.to_string())?;
         }
 
         Ok(())
@@ -127,7 +130,7 @@ impl BrowserBridge {
 impl Drop for BrowserBridge {
     fn drop(&mut self) {
         if let Err(error) = self.stop() {
-            eprintln!("Не удалось остановить browser bridge: {error}");
+            log_service_error("Не удалось остановить browser bridge", error);
         }
     }
 }
@@ -151,7 +154,7 @@ fn bridge_loop(
                 thread::sleep(LOOP_SLEEP);
             }
             Err(error) => {
-                eprintln!("Ошибка browser bridge: {error}");
+                log_service_error("Ошибка browser bridge", error);
                 thread::sleep(LOOP_SLEEP);
             }
         }

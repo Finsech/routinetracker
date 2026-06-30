@@ -4,6 +4,7 @@ import { ArrowRightLeft, CalendarDays, ChevronLeft, ChevronRight, Clock3, Focus,
 import { StateCard } from "@/components/app/StateCard"
 import { FocusDonut } from "@/components/dashboard/FocusDonut"
 import { buildTodaySummary, formatMinutes } from "@/lib/activity-analytics"
+import { UI_ERROR_COPY } from "@/lib/copy/errors"
 import {
   getActivityLogs,
   getIdleLogs,
@@ -62,7 +63,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
         setSelectedDateKey((current) => current ?? availableDateKeys[0] ?? formatDateKey(selectedDate))
       } catch {
         if (active) {
-          setError("Не удалось собрать аналитику по дням")
+          setError(UI_ERROR_COPY.analytics.loadDays)
         }
       }
     }
@@ -346,7 +347,7 @@ export function AnalyticsPage({ selectedDate }: { selectedDate: Date }) {
             {flows.map((flow) => (
               <div
                 className="rounded-[22px] border border-[#E3ECE5] bg-[#FBFDFB] px-4 py-4"
-                key={flow.name}
+                key={flow.id}
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -450,7 +451,7 @@ function buildInsights(timeline: TimelineItem[], flows: FlowSummary[]) {
     return activityItems[index - 1]?.app !== item.app ? count + 1 : count
   }, 0)
   const distractionMinutes = flows
-    .filter((flow) => /развлеч|routine|рутина|idle/i.test(flow.name))
+    .filter((flow) => flow.id === "entertainment" || flow.id === "misc" || flow.id === "idle")
     .reduce((sum, flow) => sum + parseDuration(flow.time), 0)
   const lines = [
     flows[0]
@@ -503,7 +504,7 @@ function buildFlowFootnote(flow: FlowSummary, flows: FlowSummary[]) {
   const totalMinutes = Math.max(1, flows.reduce((sum, item) => sum + parseDuration(item.time), 0))
   const flowMinutes = parseDuration(flow.time)
   const share = Math.round((flowMinutes / totalMinutes) * 100)
-  const rank = flows.findIndex((item) => item.name === flow.name)
+  const rank = flows.findIndex((item) => item.id === flow.id)
 
   if (rank === 0) {
     return `${flow.streams.length} стримов, главный поток дня`

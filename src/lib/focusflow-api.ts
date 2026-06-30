@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core"
 
 import { timeline } from "@/data/mock"
+import { buildDefaultSettingEntries } from "@/lib/settings-contract"
 
 export type ActivityLogRecord = {
   id: number
@@ -85,6 +86,8 @@ export type FocusFlowExport = {
     llm_summaries: LlmSummaryRecord[]
   }
 }
+
+export type ExportFormat = "json" | "csv"
 
 export async function getAutostartStatus() {
   if (!isTauriRuntime()) {
@@ -288,6 +291,28 @@ export async function exportFocusFlowData(): Promise<FocusFlowExport> {
   }
 }
 
+export async function saveFocusFlowExport(format: ExportFormat): Promise<string> {
+  if (!isTauriRuntime()) {
+    const payload = await exportFocusFlowData()
+    const fileName = `focusflow-export-${new Date().toISOString().slice(0, 10)}.${format}`
+
+    if (format === "json") {
+      downloadBrowserFile(
+        JSON.stringify(payload, null, 2),
+        fileName,
+        "application/json;charset=utf-8",
+      )
+      return fileName
+    }
+
+    const csv = buildFocusFlowCsv(payload)
+    downloadBrowserFile(csv, fileName, "text/csv;charset=utf-8")
+    return fileName
+  }
+
+  return invoke<string>("export_focusflow_data", { format })
+}
+
 export async function startTracking() {
   if (!isTauriRuntime()) {
     browserTrackerRunning = true
@@ -372,15 +397,7 @@ function getBrowserIdleLogs() {
 
 function getBrowserSettings() {
   if (!browserSettings) {
-    browserSettings = [
-      { key: "language", value: "Русский" },
-      { key: "theme", value: "Системная" },
-      { key: "autostart", value: "Выключен" },
-      { key: "llm_provider", value: "ollama" },
-      { key: "ollama_url", value: "http://localhost:11434" },
-      { key: "llm_model", value: "qwen2.5:7b-instruct" },
-      { key: "export_format", value: "JSON" },
-    ]
+    browserSettings = buildDefaultSettingEntries()
   }
 
   return browserSettings
@@ -391,4 +408,68 @@ function mockEndTime(dateKey: string, start: string, index: number) {
   const date = new Date(`${dateKey}T${start}:00`)
   date.setMinutes(date.getMinutes() + durationMinutes)
   return date.toISOString()
+}
+
+function buildFocusFlowCsv(payload: FocusFlowExport) {
+  const header = [
+    "kind",
+    "start_time",
+    "end_time",
+    "app_name",
+    "window_title",
+    "url",
+    "note",
+    "ignored",
+    "reviewed",
+  ]
+
+  const activityRows = payload.data.activity_logs.map((item) =>
+    [
+      "activity",
+      item.start_time,
+      item.end_time,
+      item.app_name,
+      item.window_title ?? "",
+      item.url ?? "",
+      "",
+      "",
+      "",
+    ].map(escapeCsvField),
+  )
+
+  const idleRows = payload.data.idle_logs.map((item) =>
+    [
+      "idle",
+      item.start_time,
+      item.end_time,
+      "",
+      "",
+      "",
+      item.note ?? "",
+      String(item.ignored),
+      String(item.reviewed),
+    ].map(escapeCsvField),
+  )
+
+  return [header.map(escapeCsvField), ...activityRows, ...idleRows]
+    .map((row) => row.join(","))
+    .join("\n")
+}
+
+function escapeCsvField(value: string) {
+  const normalized = value.replace(/"/g, '""')
+  return /[",\n]/.test(normalized) ? `"${normalized}"` : normalized
+}
+
+function downloadBrowserFile(content: string, fileName: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+
+  link.href = url
+  link.download = fileName
+  document.body.append(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
 }

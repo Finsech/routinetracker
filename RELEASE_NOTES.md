@@ -1,49 +1,49 @@
 # Release Notes
 
-## FocusFlow 0.1.3
+## FocusFlow 0.1.4
 
 Дата релиза: 2026-06-30
 
 ### Что вошло в обновление
 
-- Ускорена и стабилизирована локальная LLM-саммаризация:
-  - длинные дни обрабатываются через `chunk + merge`;
-  - перед LLM добавлена rule-based предклассификация;
-  - коммуникации и явный шум меньше нагружают модель;
-  - merge-pass стал легче и быстрее на длинных рабочих днях.
-- Улучшено определение проектов внутри потока `Работа`:
-  - добавлены `project_hint` и `project_key`;
-  - проектные сигналы берутся из `title` и `url`;
-  - браузер, IDE, дизайн-инструменты, календари и созвоны лучше удерживаются в рабочих контекстах.
-- Поток `Рутина` переименован в `Прочее`.
-- Поток `Общение` больше не уезжает в названия конкретных каналов:
-  - стримы нормализуются до уровня мессенджера или общего общения в чатах.
-- Усилены фоновые сценарии:
-  - single-instance режим;
-  - закрытие в tray без дублей;
-  - стабильнее автосаммари после возврата в окно и простых переключений между разделами.
-- Исправлены проблемы с битой кириллицей на экране `Сегодня`.
+- Завершен рефакторинг строк и идентификаторов:
+  - введены стабильные `FlowId` и `SettingKey`;
+  - критичная логика больше не зависит от русских UI-лейблов;
+  - `Сегодня`, `Настройки` и аналитические расчеты опираются на id, а не на отображаемые строки.
+- Сведены дефолты frontend/backend:
+  - единый контракт настроек;
+  - mock, browser fallback, LLM defaults и backend seed-значения больше не живут как отдельные независимые копии.
+- Дочищен санитарный слой проекта:
+  - `ROADMAP.md` и `SPECIFICATION.md` полностью переписаны в чистом UTF-8;
+  - добавлен `npm run check:strings`;
+  - добавлен guardrail против mojibake;
+  - вынесены frontend error strings, backend service helpers и LLM prompt strings в отдельные слои.
+- Снижен риск повторных проблем с битой кириллицей:
+  - тексты ошибок и служебных сообщений меньше размазаны по коду;
+  - структура строк стала заметно устойчивее для следующих релизов.
 
 ### Что проверено
 
-- production frontend build: `npm run build`
-- Rust-проверка: `cargo check`
-- Windows desktop bundle build: `npm run tauri build`
-- macOS bundle build: GitHub Actions `macos-build`
+- `npm run check:strings`
+- `npm run build`
+- `cargo check`
+- `npm run tauri build`
+- macOS bundle build: GitHub Actions `macOS Build`
 
 ### Windows-артефакты
 
 - `src-tauri/target/release/focusflow.exe`
-- `src-tauri/target/release/bundle/msi/FocusFlow_0.1.3_x64_en-US.msi`
-- `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.3_x64-setup.exe`
+- `src-tauri/target/release/bundle/msi/FocusFlow_0.1.4_x64_en-US.msi`
+- `src-tauri/target/release/bundle/nsis/FocusFlow_0.1.4_x64-setup.exe`
 
 ### macOS
 
 - в релиз прикладывается свежий unsigned `.dmg` из GitHub Actions;
-- это подходит для внутренней проверки и open-source дистрибуции, но не заменяет signing/notarization.
+- это подходит для внутренней проверки и open-source distribution;
+- signing/notarization остаются отдельным будущим слоем.
 
-### Что дальше после 0.1.3
+### Что дальше после 0.1.4
 
-- продолжать обкатку автосаммари на длинных реальных днях;
-- собирать точечные багфиксы по качеству project detection;
-- отдельно пройти руками macOS-ветку и решить, нужен ли signing backlog.
+- продолжать обкатку `0.1.4` на длинных реальных днях;
+- собирать продуктовые багфиксы уже поверх очищенной кодовой базы;
+- отдельно решать, нужен ли следующий цикл вокруг macOS polished distribution.

@@ -1,3 +1,4 @@
+use crate::messages::service_error;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -44,7 +45,7 @@ pub async fn request_ollama_generate(
     let client = Client::builder()
         .timeout(Duration::from_secs(300))
         .build()
-        .map_err(|error| format!("Не удалось подготовить HTTP-клиент Ollama: {error}"))?;
+        .map_err(|error| service_error("Не удалось подготовить HTTP-клиент Ollama", error))?;
 
     let endpoint = format!("{}/api/generate", normalize_base_url(&input.base_url));
     let payload = OllamaGenerateRequest {
@@ -60,7 +61,7 @@ pub async fn request_ollama_generate(
         .json(&payload)
         .send()
         .await
-        .map_err(|error| format!("Не удалось связаться с Ollama: {error}"))?;
+        .map_err(|error| service_error("Не удалось связаться с Ollama", error))?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -76,7 +77,7 @@ pub async fn request_ollama_generate(
     let data: OllamaGenerateResponse = response
         .json()
         .await
-        .map_err(|error| format!("Не удалось прочитать ответ Ollama: {error}"))?;
+        .map_err(|error| service_error("Не удалось прочитать ответ Ollama", error))?;
 
     Ok(OllamaGenerateOutput {
         response: data.response,

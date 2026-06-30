@@ -1,8 +1,11 @@
 import type { FlowSummary, SettingRow, TimelineItem, WeekActivity } from "@/types"
+import { FLOW_LABELS } from "@/lib/copy/ru"
+import { buildDefaultSettingRows } from "@/lib/settings-contract"
 
 export const flows: FlowSummary[] = [
   {
-    name: "Работа",
+    id: "work",
+    name: FLOW_LABELS.work,
     time: "4 ч 35 мин",
     accent: "#7CB39A",
     streams: [
@@ -12,7 +15,8 @@ export const flows: FlowSummary[] = [
     ],
   },
   {
-    name: "Обучение",
+    id: "learning",
+    name: FLOW_LABELS.learning,
     time: "1 ч 20 мин",
     accent: "#86B8E5",
     streams: [
@@ -21,7 +25,8 @@ export const flows: FlowSummary[] = [
     ],
   },
   {
-    name: "Прочее",
+    id: "misc",
+    name: FLOW_LABELS.misc,
     time: "35 мин",
     accent: "#F2B880",
     streams: [{ name: "Почта и календарь", time: "35 мин", activities: 6 }],
@@ -29,12 +34,12 @@ export const flows: FlowSummary[] = [
 ]
 
 export const timeline: TimelineItem[] = [
-  buildTimelineItem("09:00", "09:40", "Планирование дня", "Notion", "Работа", "#7CB39A"),
-  buildTimelineItem("10:00", "11:35", "Разработка FocusFlow", "Code", "Работа", "#7CB39A"),
-  buildTimelineItem("12:00", "12:30", "Перерыв", "Idle", "Простой", "#D9A66C", "idle"),
-  buildTimelineItem("13:00", "13:50", "Документация Tauri", "Browser", "Обучение", "#86B8E5"),
-  buildTimelineItem("14:00", "15:10", "LLM-саммаризация", "Code", "Работа", "#7CB39A"),
-  buildTimelineItem("16:00", "16:35", "Почта и календарь", "Browser", "Прочее", "#F2B880"),
+  buildTimelineItem("09:00", "09:40", "Планирование дня", "Notion", "work", "#7CB39A"),
+  buildTimelineItem("10:00", "11:35", "Разработка FocusFlow", "Code", "work", "#7CB39A"),
+  buildTimelineItem("12:00", "12:30", "Перерыв", "Idle", "idle", "#D9A66C", "idle"),
+  buildTimelineItem("13:00", "13:50", "Документация Tauri", "Browser", "learning", "#86B8E5"),
+  buildTimelineItem("14:00", "15:10", "LLM-саммаризация", "Code", "work", "#7CB39A"),
+  buildTimelineItem("16:00", "16:35", "Почта и календарь", "Browser", "misc", "#F2B880"),
 ]
 
 export const week: WeekActivity[] = [
@@ -47,22 +52,14 @@ export const week: WeekActivity[] = [
   { day: "Вс", hours: 0.8 },
 ]
 
-export const settingsRows: SettingRow[] = [
-  { label: "Язык", value: "Русский" },
-  { label: "Тема", value: "Системная" },
-  { label: "Автозапуск", value: "Выключен" },
-  { label: "LLM-провайдер", value: "ollama" },
-  { label: "Ollama", value: "http://localhost:11434" },
-  { label: "LLM-модель", value: "qwen2.5:7b-instruct" },
-  { label: "Экспорт", value: "JSON" },
-]
+export const settingsRows: SettingRow[] = buildDefaultSettingRows()
 
 function buildTimelineItem(
   start: string,
   end: string,
   label: string,
   app: string,
-  flow: string,
+  flowId: TimelineItem["flowId"],
   accent: string,
   kind: "activity" | "idle" = "activity",
 ): TimelineItem {
@@ -74,7 +71,8 @@ function buildTimelineItem(
     end,
     label,
     app,
-    flow,
+    flowId,
+    flow: FLOW_LABELS[flowId],
     accent,
     durationMinutes: endMinutes - startMinutes,
     startMinutes,
